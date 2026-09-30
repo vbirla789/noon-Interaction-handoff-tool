@@ -116,9 +116,11 @@
 
   /* Tab Bar 912:10983 is sticky; its (hidden) white fill shows once stuck */
   const scroll = document.getElementById('scroll');
+  const sbar = document.getElementById('sbar'), SBAR_H = 42.565;
   const onScroll = () => {
     const top = tabs.getBoundingClientRect().top - scroll.getBoundingClientRect().top;
-    tabs.classList.toggle('is-stuck', top <= 0.5 && scroll.scrollTop > 0);
+    tabs.classList.toggle('is-stuck', top <= SBAR_H + 0.5 && scroll.scrollTop > 0);
+    sbar.classList.toggle('is-solid', scroll.scrollTop > 2);        // content now passes under the status bar
   };
   scroll.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
@@ -615,7 +617,7 @@ const PP = (() => {
 
 
 /* ══ Roster widget (926:26273) — revealed from behind the grid ════════════
-   0.05s after the last product card has finished revealing, the grid moves down 330px on the ProtoPie
+   0.05s after the last product card has finished revealing, the grid moves down 295px on the ProtoPie
    spring and uncovers the widget, which already sits in its place under it
    (the widget's box grows with overflow clipped, so the grid's top edge is
    the reveal line). The widget itself drifts only a quarter of that
@@ -631,7 +633,7 @@ const PP = (() => {
   const rail   = document.getElementById('rosterRail');
   const lines  = [...head.querySelectorAll('.roster__kicker, .roster__title')];
 
-  const H = 330, WAIT = 50;           // after the last product card has finished revealing
+  const H = 295, WAIT = 50;           // after the last product card has finished revealing
   let timer = 0, running = false;
   const els = [roster, inner, head, rail, ...lines];
   function reset() {
@@ -669,11 +671,11 @@ const PP = (() => {
   const PARALLAX = 0.25;              // widget travel ÷ grid travel
   function open() {
     running = true;
-    // grid edge: the box grows 0 → 330 and the grid below rides on it
+    // grid edge: the box grows 0 → 295 and the grid below rides on it
     PP.commit(roster, [PP.spring(roster, 0, H, (v) => ({ height: `${(+v).toFixed(2)}px` }))], { height: H + 'px' });
     // the widget behind it: same spring, a quarter of the travel
     PP.commit(inner, [PP.moveY(inner, -H * PARALLAX, 0)], { transform: '' });
-    lines.forEach(riseLine);          // kicker, then title — each from below with a soft spring
+    lines.forEach(riseLine);          // the heading rises in from below with a soft spring
     PP.commit(rail, [PP.fade(rail, 0, 1, { curve: 'out', ms: PP.OUT_LONG_MS, delay: 25 })], { opacity: 1 });
     roster.dispatchEvent(new CustomEvent('roster:reveal'));   // the slider runs its first-time hint
   }
@@ -725,15 +727,15 @@ const Sfx = (() => {
   };
 })();
 
-/* ══ Roster slider — infinite, products snap one by one into the slot ═════
+/* ══ Roster slider — ten products, snapping one by one into the slot ══════
    The pink selection (circle, indicator tick) stays fixed at the left; the
-   products and the tick ruler slide underneath it and loop forever:
-   · the iPhone Duo is the start: you can't scroll back past it (rubber band,
-     springs back); forward it loops forever
-   · each product sits at wrap(i·144 + x) inside a 6-product window, so it
-     leaves one side off-screen and re-enters on the other; the ruler repeats
-     every 144px (18 ticks, a darker mark under each product) and scrolls
-     modulo that period
+   products and the tick ruler slide underneath it:
+   · a bounded list of 10 (no looping): the iPhone Duo is the start and the
+     10th product the end — past either end the rail rubber-bands and springs
+     back; the ruler begins at the first product's tick and ends at the last
+   · each product sits at i·144 + x; the ruler strip repeats every 144px
+     (18 ticks, a darker mark under each product) and scrolls modulo that
+     period, masked to the start/end ticks
    · drag / trackpad swipe follows 1:1; release snaps ONE product in the
      flick direction (or the nearest after a long drag) on the ProtoPie
      spring, carrying the release velocity; tap a product to bring it in
@@ -761,19 +763,30 @@ const Sfx = (() => {
   // so it inherits the card's travel and scale without being kept in sync
   items[0].appendChild(pill);
 
-  const PITCH = 144, TICK = 8, N = items.length, SPAN = N * PITCH;
+  const PITCH = 144, TICK = 8, N = items.length, X_MIN = -(N - 1) * PITCH;   // x runs from 0 (first) to X_MIN (last)
   const UNSEL_SHRINK = 0.1;                                 // unselected products: −10%
   // each card scales about its image centre, so the image shrinks in place and the text follows
-  items.forEach((el) => { const img = el.querySelector('.rp__img'); el.style.transformOrigin = `50% ${parseFloat(img.style.height) / 2}px`; });   // image is the card's first child, at top 0 (inline Figma size — the PLP may not be laid out yet)
+  /* One layout for every card, taken from the selected iPhone 18: images sit on a common bottom line
+     (IMG_LINE px down the card, whatever their Figma height), the name 12px below it. Unselected cards
+     scale about the top of that text row, so names and prices stay on one line at any scale.
+     (Inline Figma image sizes are used — the PLP may not be laid out yet.)                          */
+  // The Duo keeps its own Figma layout (937:30005: 98px image at the top, name 14px below → y 406, Notify
+  // pill under it), so the pill sits 9px clear of the ruler's dot; it scales about its own text-row top.
+  const IMG_LINE = 108, TEXT_GAP = 12, DUO_ROW = 98 + 14;
+  items.forEach((el, i) => {
+    const img = el.querySelector('.rp__img');
+    if (i === 0) { el.style.transformOrigin = `50% ${DUO_ROW}px`; return; }
+    img.style.marginTop = `${IMG_LINE - parseFloat(img.style.height)}px`;
+    el.style.transformOrigin = `50% ${IMG_LINE + TEXT_GAP}px`;
+  });
   const TICKS_PER_ITEM = PITCH / TICK;                      // 18
   const mod = (a, n) => ((a % n) + n) % n;
-  const wrap = (p) => mod(p + PITCH, SPAN) - PITCH;         // window [−144, 720): wraps happen off-screen
-  /* The Duo is the start: x ≤ 0 (x grows negative going forward, loops forever
-     that way). Past the start (x > 0, only while rubber-banding) nothing wraps
-     in from the left — the products just shift right, unwrapped.            */
-  const slotPos = (i) => (x > 0 ? i * PITCH + x : wrap(i * PITCH + x));
+  const slotPos = (i) => i * PITCH + x;                      // 0 = in the selected slot
+  const clampSlot = (k) => Math.max(0, Math.min(N - 1, k));
   const RUBBER = 150;                                       // iOS-style overscroll resistance
   const rubber = (d) => (1 - 1 / ((d * 0.55) / RUBBER + 1)) * RUBBER;
+  // rubber-band a raw rail position past either end
+  const bound = (raw) => (raw > 0 ? rubber(raw) : raw < X_MIN ? X_MIN - rubber(X_MIN - raw) : raw);
 
   /* ruler: one periodic strip, starting two periods left of the indicator */
   const RULER_LEFT = 68 - 2 * PITCH;
@@ -813,14 +826,19 @@ const Sfx = (() => {
       el.style.transform = `translate3d(${(p - i * PITCH).toFixed(2)}px,0,0) scale(${(1 - UNSEL_SHRINK * e).toFixed(4)})`;
     });
     ticks.style.transform = `translate3d(${mod(x, PITCH).toFixed(2)}px,0,0)`;
+    // the red line stands in for the tick under it (as in Figma): hide that one tick so a darker product
+    // mark can't peek out above the 14px line
+    const under = Math.round((IND_X - 1 - RULER_LEFT - mod(x, PITCH)) / TICK);
+    if (under !== hiddenTick) { if (tickEls[hiddenTick]) tickEls[hiddenTick].style.visibility = ''; if (tickEls[under]) tickEls[under].style.visibility = 'hidden'; hiddenTick = under; }
     ruler.style.setProperty('--start', `${(IND_RULER_X + x).toFixed(2)}px`);   // the ruler begins at the first product's tick
+    ruler.style.setProperty('--end', `${(IND_RULER_X + x - X_MIN).toFixed(2)}px`);   // …and ends at the last product's tick
     const ti = Math.round(-x / TICK);
     if (ti !== lastTick) {
       lastTick = ti;
       const now = performance.now();
       if (sound && now - lastTickAt >= 100) { lastTickAt = now; Sfx.tick(); }
     }
-    select(mod(Math.round(-x / PITCH), N), sound);
+    select(clampSlot(Math.round(-x / PITCH)), sound);
     waveKick();
   }
 
@@ -833,6 +851,7 @@ const Sfx = (() => {
      stops, then eases back over ~100ms.                                  */
   const WAVE = { A: 0.43, SIGMA: 17.5, ATTACK: 0.02, HOLD: 50, DECAY: 100, V_MIN: 20 };
   const tickEls = [...ticks.children], swelled = new Set();
+  let hiddenTick = -1;
   const IND_X = 69;                                          // indicator centre, group coords
   let E = 0, wx = 0, wt = 0, lastActive = -1e9, relFrom = null, waveRaf = 0;
   let armed = false;   // only real input (drag, wheel, tap, keys) can swell the ruler — the snap spring's
@@ -982,9 +1001,10 @@ const Sfx = (() => {
   function release(vel) {
     // one by one: from the nearest slot, step at most one product in the flick direction
     if (x > 0) return goToX(0, vel);                            // pulled past the start: spring back
+    if (x < X_MIN) return goToX(X_MIN, vel);                    // …or past the last product
     const nearest = Math.round(-x / PITCH);
     const proj = Math.round(-(x + vel * 0.2) / PITCH);
-    goTo(Math.max(0, nearest + Math.sign(proj - nearest) * Math.min(1, Math.abs(proj - nearest))), vel);
+    goTo(clampSlot(nearest + Math.sign(proj - nearest) * Math.min(1, Math.abs(proj - nearest))), vel);
   }
 
   /* pointer: drag with direction lock (vertical pans stay with the page) */
@@ -1011,7 +1031,7 @@ const Sfx = (() => {
     }
     if (Math.abs(e.clientX - drag.sx) > 2) dotHide();
     const raw = drag.x0 + (e.clientX - drag.sx);
-    x = raw > 0 ? rubber(raw) : raw;                             // resist past the start
+    x = bound(raw);                                              // resist past either end
     const s = drag.samples; s.push([performance.now(), x]); while (s.length > 2 && s[s.length - 1][0] - s[0][0] > 80) s.shift();
     render();
   });
@@ -1023,7 +1043,7 @@ const Sfx = (() => {
       if (hits.some((el) => el.closest && el.closest('.rp__notify'))) { notifyMe(); return; }   // the Notify pill
       const hit = hits.find((el) => el.closest && el.closest('.rp'));
       const rp = hit && hit.closest('.rp');
-      if (rp && rp.dataset.i !== undefined) { const i = +rp.dataset.i; goToX(Math.min(0, x - slotPos(i)), 0); return; }
+      if (rp && rp.dataset.i !== undefined) { const i = +rp.dataset.i; goToX(-clampSlot(i) * PITCH, 0); return; }
       if (d.wasAnim || Math.abs(x - Math.round(x / PITCH) * PITCH) > 0.05) release(0); else dotSettle();
       return;
     }
@@ -1044,7 +1064,8 @@ const Sfx = (() => {
     const now = performance.now();
     if (!wheel || now - wheel.t > 120) wheel = { samples: [] };
     wheel.t = now;
-    x -= dx > 0 || x - dx <= 0 ? dx : dx * (0.35 / (1 + Math.max(0, x) / 30));   // resist past the start
+    const over = x > 0 ? x : x < X_MIN ? X_MIN - x : 0, outward = (x - dx > 0 && dx < 0) || (x - dx < X_MIN && dx > 0);
+    x -= outward ? dx * (0.35 / (1 + over / 30)) : dx;           // resist past either end
     wheel.samples.push([now, x]); while (wheel.samples.length > 2 && now - wheel.samples[0][0] > 80) wheel.samples.shift();
     render();
     clearTimeout(wheelT);
@@ -1059,7 +1080,7 @@ const Sfx = (() => {
   rail.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') ftuxCancel();
     const from = anim ? Math.round(-anim.target / PITCH) : Math.round(-x / PITCH);
-    if (e.key === 'ArrowRight') { e.preventDefault(); Sfx.unlock(); goTo(from + 1); }
+    if (e.key === 'ArrowRight') { e.preventDefault(); Sfx.unlock(); goTo(clampSlot(from + 1)); }
     if (e.key === 'ArrowLeft')  { e.preventDefault(); Sfx.unlock(); goTo(Math.max(0, from - 1)); }
   });
 
@@ -1212,3 +1233,39 @@ const Sfx = (() => {
     .observe(plp, { attributes: true, attributeFilter: ['class'] });
   reset();
 })();
+
+/* ══ Warm the image decoder ════════════════════════════════════════════════
+   Images inside collapsed or off-screen layers (the roster widget grows from
+   height 0, the looping products, the PLP cards, below-the-fold Home rows)
+   are fetched but only decoded on first paint — which lands mid-animation as
+   a 100–250ms hitch. Decode everything up front, once the page is idle.     */
+(() => {
+  const warm = () => document.querySelectorAll('img').forEach((img) => {
+    if (img.decode) img.decode().catch(() => {});
+  });
+  const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 200));
+  if (document.readyState === 'complete') idle(warm); else addEventListener('load', () => idle(warm), { once: true });
+})();
+
+/* ══ Variant switcher (prototype tool) ═════════════════════════════════════
+   1–4 beside the phone. The choice lives on <html data-variant="n"> (CSS can
+   target [data-variant="2"] …), is announced as a 'variant:change' event
+   (detail = n) for scripted differences, and is remembered — ?v=n in the URL
+   wins, then the last pick. Variations 2–4 currently match 1.               */
+(() => {
+  const nav = document.getElementById('vswitch'); if (!nav) return;
+  const btns = [...nav.querySelectorAll('.vswitch__b')];
+  const KEY = 'noon-prototype-variant';
+  const read = () => { try { return localStorage.getItem(KEY); } catch (_) { return null; } };
+  const save = (v) => { try { localStorage.setItem(KEY, v); } catch (_) {} };
+  function apply(v, announce = true) {
+    v = String(Math.min(4, Math.max(1, parseInt(v, 10) || 1)));
+    document.documentElement.dataset.variant = v;
+    btns.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === v)));
+    save(v);
+    if (announce) window.dispatchEvent(new CustomEvent('variant:change', { detail: +v }));
+  }
+  btns.forEach((b) => b.addEventListener('click', () => apply(b.dataset.v)));
+  apply(new URLSearchParams(location.search).get('v') || read() || 1, false);
+})();
+

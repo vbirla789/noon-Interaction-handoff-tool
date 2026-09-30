@@ -273,7 +273,7 @@ img.contain { object-fit: contain; }
 .reco { display: flex; flex-direction: column; gap: 8px; }
 .reco__body { display: flex; flex-direction: column; align-items: center; }
 .tabs {
-  position: sticky; top: 0; z-index: 5;
+  position: sticky; top: 42.565px; z-index: 5;   /* sticks just under the status bar */
   width: 375px; display: flex; align-items: center;
   padding: 6.4px 0 0 12px;
   transition: background-color .2s;
@@ -575,6 +575,21 @@ img.contain { object-fit: contain; }
 /* ══ Navigation: home ⇄ search push (driven by app.js springs) ══════════ */
 .view { position: absolute; inset: 0; overflow: hidden; backface-visibility: hidden; }
 .view--home { z-index: 1; }
+/* 98:27985 — iOS light status bar, 375×42.565, fixed above every view (it doesn't travel with the push).
+   Transparent like the Figma frame; a white backdrop fades in only while Home content scrolls beneath it. */
+.sbar { position: absolute; left: 0; top: 0; width: 375px; height: 42.565px; z-index: 60; pointer-events: none; }
+.sbar::before { content: ''; position: absolute; inset: 0 0 -1.435px; background: #fff; opacity: 0; transition: opacity .2s ease; }
+.sbar.is-solid::before { opacity: 1; }
+.sbar > * { position: absolute; }
+.sbar__time { left: 21px; top: 13px; width: 54px; text-align: center;
+  font-family: -apple-system, 'SF Pro Text', BlinkMacSystemFont, system-ui, sans-serif; font-weight: 600; font-size: 15px;
+  line-height: normal; letter-spacing: -0.3px; color: #000; }
+.sbar__cell { left: 294px; top: 17.09px; width: 17px; height: 10.319px; }
+.sbar__wifi { left: 316.01px; top: 16.77px; width: 15.333px; height: 10.642px; }
+.sbar__batt { left: 336.33px; top: 17.33px; width: 24.34px; height: 11.333px; }
+.sbar__border { position: absolute; left: 0; top: 0; width: 22px; height: 11.333px; border: 1px solid #000; border-radius: 2.667px; opacity: .35; }
+.sbar__cap { position: absolute; left: 23.012px; top: 3.67px; width: 1.328px; height: 4px; }
+.sbar__fill { position: absolute; left: 2px; top: 2px; width: 18px; height: 7.333px; background: #000; border-radius: 1.333px; }
 .view__dim { position: absolute; inset: 0; z-index: 30; background: #000; opacity: 0; pointer-events: none; }
 .search { -webkit-tap-highlight-color: transparent; cursor: pointer; }
 .search:focus-visible { outline: 2px solid #3866df; outline-offset: 2px; }
@@ -741,9 +756,9 @@ img.contain { object-fit: contain; }
 .pcard__img { position: absolute; left: 0; top: 0; width: 170px; height: 214.3px; object-fit: cover; }
 .pcard__imgbox { position: absolute; left: 0; top: 0; width: 170px; height: 231.77px; overflow: hidden; }
 .pcard__imgbox img { position: absolute; left: -7.84%; top: -7.86%; width: 115.99%; height: 115.91%; }
-.pcard__wish { position: absolute; left: 141.5px; top: 3px; display: flex; padding: 4px; border-radius: 9999px; background: rgba(255,255,255,.2); }
+.pcard__wish { position: absolute; left: 142px; top: 4px;   /* 109:22210 card: heart icon at (146, 8) */ display: flex; padding: 4px; border-radius: 9999px; background: rgba(255,255,255,.2); }
 .pcard__wish img { width: 16px; height: 16px; }
-.pcard__add { position: absolute; left: 132px; top: 177px; display: flex; padding: 4px; border-radius: 6px; background: #fff; --sw: 1.2px; --sc: #e2e2e3; }
+.pcard__add { position: absolute; left: 132px; top: 178px;   /* plus icon at (136, 182) */ display: flex; padding: 4px; border-radius: 6px; background: #fff; --sw: 1.2px; --sc: #e2e2e3; }
 .pcard__add img { width: 24px; height: 24px; }
 .pcard__dots {
   position: absolute; left: 71.5px; top: 200px; width: 27px; height: 8px;
@@ -802,27 +817,41 @@ img.contain { object-fit: contain; }
 
 /* Bottom nav on the PLP slides up from below */
 .bnav--plp { transform: translate3d(0, 88px, 0); }
+/* 109:23258 Main bottom Nav (PLP): white, soft top shadow; five 67×63 items spread across (16px sides),
+   each a 4px active bar (white — invisible), 8px gap, then a 32px icon over a 12px Figtree label;
+   below, the 25px home-bar strip (124×5 #343D54) */
+.pnav { position: absolute; left: 0; top: 724px; width: 375px; height: 88px; z-index: 20; background: #fff;
+  box-shadow: 0 -4px 12.5px rgba(0,0,0,.06); display: flex; flex-direction: column; }
+.pnav__row { display: flex; align-items: center; justify-content: space-between; padding: 0 16px; }
+.pnav__it { flex: none; width: 67px; height: 63px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.pnav__bar { display: block; flex: none; width: 43px; height: 4px; }
+.pnav__cell { flex: 1 0 0; width: 67px; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 1px; }
+.pnav__cell img { width: 32px; height: 32px; flex: none; }
+.pnav__t { font-family: var(--fig); font-weight: 500; font-size: 12px; line-height: 20.018px; letter-spacing: -0.1601px; color: #666d85; white-space: nowrap; }
+.pnav__it.is-on .pnav__t { font-weight: 700; color: #1155cb; }
+.pnav__home { height: 25px; display: flex; align-items: center; justify-content: center; padding: 12px 0 8px; background: #fff; }
+.pnav__home span { display: block; width: 124px; height: 5px; border-radius: 8px; background: #343d54; }
 
 /* ══ 926:26273 "The iPhone roster" widget — between the chips and the grid.
-   Collapsed (height 0) until the grid settles; opens to 330px so the grid
+   Collapsed (height 0) until the grid settles; opens to 295px so the grid
    lands at Figma's y=474. Local coords: widget top = screen y 154.        */
 .roster { position: relative; height: 0; overflow: hidden; }
-.roster__in { position: absolute; left: 0; top: 0; width: 375px; height: 330px; }
-.roster__head { position: absolute; left: 33.5px; top: 15px; width: 305px; height: 40px; }   /* 90:18959 — centred on x 186, kicker at y 237 */
-.roster__kicker, .roster__title {
+.roster__in { position: absolute; left: 0; top: 0; width: 375px; height: 295px; }
+.roster__head { position: absolute; left: 55.5px; top: 10px; width: 261px; height: 20px; }   /* 109:22921 — heading at (55.5, 232) */
+.roster__title {
   position: absolute; margin: 0; white-space: nowrap; text-align: center;
   line-height: 0.86; text-box: trim-both cap alphabetic;
-  opacity: 0; will-change: transform, opacity;   /* each line rises in on its own (app.js LINE) */
+  opacity: 0; will-change: transform, opacity;   /* rises in on its own spring (app.js LINE) */
 }
-/* 90:18960 "THE iPHONE ROSTER": Noontree ExtraBold 12, −1% (−0.12px), #828282, 120×8 cap box */
-.roster__kicker { left: 92.5px; top: 0; width: 120px; height: 8px; font-weight: 800; font-size: 12px; letter-spacing: -0.12px; color: #828282; }
-/* 90:18961 — 12px below the kicker (y 257) */
-.roster__title  { left: 15px; top: 20px; width: 275px; height: 20px; font-weight: 500; font-size: 28px; letter-spacing: -1.4px; color: #262626; }
-.roster__rail { position: absolute; left: 0; top: 76px; width: 375px; height: 218px; display: flex; padding: 0 12px 0 6px; opacity: 0; }
+/* 937:29996 "From latest to greatest": Noontree Medium 28, −5% (−1.4px), #262626, 259×20 cap box */
+.roster__title  { left: 0; top: 0; width: 261px; height: 20px; font-weight: 500; font-size: 28px; letter-spacing: -1.4px; color: #262626; }
+.roster__rail { position: absolute; left: 0; top: 44px; width: 375px; height: 218px; display: flex; padding: 0 12px 0 6px; opacity: 0; }
 .roster__group { position: relative; flex: none; width: 838px; height: 218px; }
 .roster__sel { position: absolute; left: 10px; top: 4px; width: 122px; height: 122px; }
 .roster__prods { position: absolute; left: 20px; top: 24px; width: 828px; height: 160px; }
 .rp { position: absolute; top: 0; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+/* the iPhone cards share one layout: images bottom-aligned on one line (app.js sets each image's
+   margin-top), the name 12px below, name/price rows identical. The Duo keeps its Figma layout. */
 .rp--duo { gap: 14px; }
 .rp__img { position: relative; flex: none; display: block; }
 .rp__img img.cover { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -831,10 +860,8 @@ img.contain { object-fit: contain; }
 .rp.is-sel .rp__name { font-weight: 600; letter-spacing: -0.5px; color: #000; }
 .rp { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .rp__price { font-weight: 400; font-size: 13px; line-height: normal; color: rgba(0,0,0,.6); white-space: nowrap; text-align: center; }
-.rp--lg .rp__name { font-size: 20.003px; line-height: normal; letter-spacing: 0; color: #000; }
-.rp--lg .rp__price { font-size: 14.548px; }
 .rp__notify {
-  position: absolute; left: 6px; top: 132px;
+  position: absolute; left: 6px; top: 132px;   /* 2px under the Duo's name (98 + 14 + 18) */
   display: flex; align-items: center; gap: 4px; padding: 6px 8px;
   border-radius: 43px; background: #fff; box-shadow: inset 0 0 0 1px #fadbda;
   font-weight: 400; font-size: 12px; line-height: normal; letter-spacing: -0.09px; color: #c82d74; white-space: nowrap;
@@ -844,7 +871,7 @@ img.contain { object-fit: contain; }
    padding 6/8 → 7/9 here since the stroke is an inset shadow), centred under the Duo: (−14, 135) in the card */
 .rp__done { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 4px;
   white-space: nowrap; opacity: 0; pointer-events: none; }
-.rp__done b { font-weight: 400; font-size: 12px; line-height: normal; letter-spacing: -0.09px; color: #c82d74; }
+.rp__done b { display: block; width: 95px; font-weight: 400; font-size: 12px; line-height: normal; letter-spacing: -0.09px; color: #c82d74; }   /* Figma's 95px text box → label at x 21, check at x 120 */
 .rp__done img { width: 16px; height: 16px; flex: none; }
 .rp__notify.is-done { left: -14px; top: 135px; width: 133px; height: 30px; padding: 7px 9px; justify-content: center; cursor: default; }
 .rp__notify.is-done > span:first-child, .rp__notify.is-done > img { opacity: 0; }
@@ -860,28 +887,54 @@ img.contain { object-fit: contain; }
 .tick::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 14px; border-radius: 41px;
   background: linear-gradient(to top, rgb(230,163,193), rgb(236,194,185)); opacity: var(--tint, 0); pointer-events: none; }
 .tick--mark::after { height: 16px; }
-.roster__dot { position: absolute; left: 67px; top: 198px; width: 4px; height: 4px; }
+.roster__dot { position: absolute; left: 67px; top: 198px; width: 4px; height: 4px; }   /* centred on the red line (x 73–77 over 74–76); Figma has it 1px left */
 
 /* ── Roster slider: products + ruler ride one track under a fixed selection ── */
 .roster__rail.is-slider { overflow: hidden; touch-action: pan-y; cursor: grab; user-select: none; -webkit-user-select: none; outline: none; }
 .roster__rail.is-slider.is-drag { cursor: grabbing; }
 /* ruler mask — the tick strip scrolls inside a fixed, full-width frame
    (.roster__ruler, rail coordinates) that carries the mask. The ruler has a
-   START: the tick under the first product (the Duo). Nothing is drawn left
-   of it — --start is that tick's x, set by app.js as the rail moves (74px,
-   the red indicator, when the Duo is selected; it slides off-screen as you
-   move on, so the lines behind fill in naturally). Soft 6px edge on it, a
-   48px fade off the right edge. Products are never masked.              */
-.roster__ruler { --start: 74px; position: absolute; left: -6px; top: 190px; width: 375px; height: 30px; pointer-events: none;
-  -webkit-mask-image: linear-gradient(to right, transparent 0, transparent calc(var(--start) - 6px), rgba(0,0,0,.4) calc(var(--start) - 3px), rgba(0,0,0,.85) calc(var(--start) - 1px), #000 var(--start),
-    #000 calc(100% - 48px), rgba(0,0,0,.93) calc(100% - 39px), rgba(0,0,0,.7) calc(100% - 26px), rgba(0,0,0,.3) calc(100% - 12px), transparent 100%);
-          mask-image: linear-gradient(to right, transparent 0, transparent calc(var(--start) - 6px), rgba(0,0,0,.4) calc(var(--start) - 3px), rgba(0,0,0,.85) calc(var(--start) - 1px), #000 var(--start),
-    #000 calc(100% - 48px), rgba(0,0,0,.93) calc(100% - 39px), rgba(0,0,0,.7) calc(100% - 26px), rgba(0,0,0,.3) calc(100% - 12px), transparent 100%); }
+   START (the tick under the first product, the Duo) and an END (the tick
+   under the 10th): nothing is drawn outside them. --start/--end are those
+   ticks' x, set by app.js as the rail moves, so the lines fill in and run
+   out naturally. Soft 6px ends, a 48px fade off the right edge. Products are
+   never masked.                                                          */
+.roster__ruler { --start: 74px; --end: 1370px; position: absolute; left: -6px; top: 191px; width: 375px; height: 30px; pointer-events: none;
+  /* two layers, intersected: the ruler's own extent (first product's tick → last product's tick, soft 6px
+     ends; --start/--end follow the rail, set by app.js) × the soft fade off the right edge of the screen */
+  -webkit-mask-image: linear-gradient(to right, transparent calc(var(--start) - 6px), rgba(0,0,0,.4) calc(var(--start) - 3px), rgba(0,0,0,.85) calc(var(--start) - 1px), #000 var(--start),
+    #000 calc(var(--end) + 2px), rgba(0,0,0,.85) calc(var(--end) + 3px), rgba(0,0,0,.4) calc(var(--end) + 5px), transparent calc(var(--end) + 8px)),
+    linear-gradient(to right, #000 calc(100% - 48px), rgba(0,0,0,.93) calc(100% - 39px), rgba(0,0,0,.7) calc(100% - 26px), rgba(0,0,0,.3) calc(100% - 12px), transparent 100%);
+  -webkit-mask-composite: source-in;
+          mask-image: linear-gradient(to right, transparent calc(var(--start) - 6px), rgba(0,0,0,.4) calc(var(--start) - 3px), rgba(0,0,0,.85) calc(var(--start) - 1px), #000 var(--start),
+    #000 calc(var(--end) + 2px), rgba(0,0,0,.85) calc(var(--end) + 3px), rgba(0,0,0,.4) calc(var(--end) + 5px), transparent calc(var(--end) + 8px)),
+    linear-gradient(to right, #000 calc(100% - 48px), rgba(0,0,0,.93) calc(100% - 39px), rgba(0,0,0,.7) calc(100% - 26px), rgba(0,0,0,.3) calc(100% - 12px), transparent 100%);
+          mask-composite: intersect; }
 .roster__ruler .roster__ticks { top: 14px; }
 .roster__rail.is-slider img { -webkit-user-drag: none; pointer-events: none; }
 .rp, .rp__notify, .roster__ticks { will-change: transform; }
 /* fixed pink indicator tick (sits over whichever ruler tick is beneath it) */
-.roster__ind { position: absolute; left: 68px; top: 204px; width: 2px; height: 16px; border-radius: 41px;   /* covers the whole tick beneath — no grey sliver */
+.roster__ind { position: absolute; left: 68px; top: 204px; width: 2px; height: 17px; border-radius: 41px;   /* 2×17 at (74, 474) — 3px taller than Figma's 14 (user request), bottom on the tick baseline; the tick beneath is hidden (app.js) */
   background: linear-gradient(to top, rgba(193,24,100,.4), rgba(207,103,81,.4)), #fff;
   transform-origin: 50% 100%; will-change: transform; }   /* grows upward with the ruler wave */
+
+/* ── Variant switcher — prototype tool beside the phone (not part of the app UI) ──
+   White pill 52px wide, 40px circles 8px apart; active = red #E33C4D with a white digit.
+   Picking one sets <html data-variant="n">, so each variation can be styled/scripted on its own. */
+.vswitch {
+  position: fixed; top: 50%; left: calc(50% - 187.5px - 28px); transform: translate(-100%, -50%); z-index: 1000;
+  display: flex; flex-direction: column; gap: 8px; padding: 9.5px 6px;
+  background: #fff; border-radius: 999px; box-shadow: 0 4px 18px rgba(20, 24, 40, .08), 0 1px 3px rgba(20, 24, 40, .06);
+}
+.vswitch__b {
+  width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center;
+  background: #ededed; color: #0c0c0c; font-family: var(--noon); font-weight: 700; font-size: 21px; line-height: 1;
+  cursor: pointer; transition: background-color .22s ease, color .22s ease, transform .18s cubic-bezier(.2, .9, .3, 1.3);
+  -webkit-tap-highlight-color: transparent;
+}
+.vswitch__b:hover { background: #e3e3e3; }
+.vswitch__b:active { transform: scale(.92); }
+.vswitch__b[aria-pressed="true"] { background: #e33c4d; color: #fff; }
+.vswitch__b:focus-visible { outline: 2px solid #e33c4d; outline-offset: 2px; }
+@media (max-width: 520px) { .vswitch { display: none; } }   /* phone-sized screens: no room beside the frame */
 
