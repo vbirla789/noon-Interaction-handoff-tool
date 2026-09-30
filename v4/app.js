@@ -1,6 +1,7 @@
+/* Option 4 — copy of iteration 01's app.js (asset paths point to ../assets/) */
 /* noon Home — rails are data; everything else is static markup. */
 (() => {
-  const A = 'assets/';
+  const A = '../assets/';
 
   /* ── SKU cards (912:11004 et al.) ─────────────────────────────────── */
   const P = {
@@ -442,7 +443,7 @@ const PP = (() => {
   const nav    = document.getElementById('plpNav');
   const tags   = document.getElementById('plpTags');
   const chips  = [...plp.querySelectorAll('.chip')];
-  const A = 'assets/';
+  const A = '../assets/';
 
   // times are from the end of the suggestions' exit (nothing overlaps it); SKEL_MS is the layer fade
   const T = { SKEL_AT: 0, SKEL_MS: 300, NAV_AT: 224, CHIPS_AT: 480, CARDS_AT: 680, CHIP_DROP: 20, CARD_RISE: 16, SKEL_OUT_AFTER: 353 };
@@ -795,7 +796,7 @@ const Sfx = (() => {
   group.insertBefore(ruler, ticks); ruler.appendChild(ticks);
   ticks.style.left = RULER_LEFT + 6 + 'px';                  // the frame starts 6px left of the group
   ticks.innerHTML = Array.from({ length: 84 }, (_, i) =>
-    i % TICKS_PER_ITEM === 0 ? '<i class="tick tick--mark"></i>' : '<i class="tick"><img src="assets/02f08.svg" alt="" /></i>').join('');
+    i % TICKS_PER_ITEM === 0 ? '<i class="tick tick--mark"></i>' : '<i class="tick"><img src="../assets/02f08.svg" alt="" /></i>').join('');
   const ind = document.createElement('i'); ind.className = 'roster__ind'; ind.setAttribute('aria-hidden', 'true');
   group.insertBefore(ind, dot);
   rail.classList.remove('hscroll'); rail.classList.add('is-slider');

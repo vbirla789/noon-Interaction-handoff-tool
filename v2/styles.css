@@ -1,3 +1,4 @@
+/* Option 2 — copy of iteration 01's styles.css (fonts/assets resolve to the shared root folders) */
 /* ══════════════════════════════════════════════════════════════════════
    noon Home — 1:1 build of Figma node 912:10736 "Home Page"
    File: JpLINoW8RMtYB6CLRkw2vm (Saswata), page "Upscale"
@@ -6,15 +7,15 @@
    Every number is transcribed from get_design_context / get_metadata.
    ══════════════════════════════════════════════════════════════════════ */
 
-@font-face { font-family: Noontree; src: url('fonts/Noontree-Regular.otf')  format('opentype'); font-weight: 400; font-display: block; }
-@font-face { font-family: Noontree; src: url('fonts/Noontree-Medium.otf')   format('opentype'); font-weight: 500; font-display: block; }
-@font-face { font-family: Noontree; src: url('fonts/Noontree-SemiBold.otf') format('opentype'); font-weight: 600; font-display: block; }
-@font-face { font-family: Noontree; src: url('fonts/Noontree-Bold.otf')     format('opentype'); font-weight: 700; font-display: block; }
-@font-face { font-family: Noontree; src: url('fonts/Noontree-ExtraBold.otf') format('opentype'); font-weight: 800; font-display: block; }
-@font-face { font-family: Figtree;  src: url('fonts/Figtree-Regular.ttf')  format('truetype'); font-weight: 400; font-display: block; }
-@font-face { font-family: Figtree;  src: url('fonts/Figtree-Medium.ttf')   format('truetype'); font-weight: 500; font-display: block; }
-@font-face { font-family: Figtree;  src: url('fonts/Figtree-SemiBold.ttf') format('truetype'); font-weight: 600; font-display: block; }
-@font-face { font-family: Figtree;  src: url('fonts/Figtree-Bold.ttf')     format('truetype'); font-weight: 700; font-display: block; }
+@font-face { font-family: Noontree; src: url('../fonts/Noontree-Regular.otf')  format('opentype'); font-weight: 400; font-display: block; }
+@font-face { font-family: Noontree; src: url('../fonts/Noontree-Medium.otf')   format('opentype'); font-weight: 500; font-display: block; }
+@font-face { font-family: Noontree; src: url('../fonts/Noontree-SemiBold.otf') format('opentype'); font-weight: 600; font-display: block; }
+@font-face { font-family: Noontree; src: url('../fonts/Noontree-Bold.otf')     format('opentype'); font-weight: 700; font-display: block; }
+@font-face { font-family: Noontree; src: url('../fonts/Noontree-ExtraBold.otf') format('opentype'); font-weight: 800; font-display: block; }
+@font-face { font-family: Figtree;  src: url('../fonts/Figtree-Regular.ttf')  format('truetype'); font-weight: 400; font-display: block; }
+@font-face { font-family: Figtree;  src: url('../fonts/Figtree-Medium.ttf')   format('truetype'); font-weight: 500; font-display: block; }
+@font-face { font-family: Figtree;  src: url('../fonts/Figtree-SemiBold.ttf') format('truetype'); font-weight: 600; font-display: block; }
+@font-face { font-family: Figtree;  src: url('../fonts/Figtree-Bold.ttf')     format('truetype'); font-weight: 700; font-display: block; }
 
 :root {
   --noon: Noontree, Figtree, -apple-system, BlinkMacSystemFont, sans-serif;
