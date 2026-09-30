@@ -788,15 +788,15 @@ const Sfx = (() => {
       im.className = 'cover'; im.removeAttribute('style');
     });
   })();
-  /* Pricing mix: every load re-rolls each iPhone's "Starting" price inside its generation's band (bases
+  /* Pricing mix: every load re-rolls each iPhone's "Starting" price inside its slot's band (bases
      500 apart, ±200 in steps of 100, always ending in 99), so newer models always cost more and the
      4-digit "Starting Đ####" format and layout never change. */
   (function mixPrices() {
-    const BASE = { 18: 5299, 17: 4799, 16: 4299, 15: 3799, 14: 3299, 13: 2799, 12: 2299, 11: 1799 };
-    items.slice(1).forEach((el) => {
-      const gen = +(el.querySelector('.rp__name').textContent.match(/\d+/) || [0])[0], price = el.querySelector('.rp__price');
-      if (!BASE[gen] || !price) return;
-      price.textContent = `Starting \uE001${BASE[gen] + 100 * (Math.floor(Math.random() * 5) - 2)}`;
+    const BASE = [5799, 5299, 4799, 4299, 3799, 3299, 2799, 2299, 1799];   // one band per iPhone slot, newest first
+    items.slice(1).forEach((el, i) => {
+      const base = BASE[i], price = el.querySelector('.rp__price');
+      if (!base || !price) return;
+      price.textContent = `Starting \uE001${base + 100 * (Math.floor(Math.random() * 5) - 2)}`;
     });
   })();
   const IMG_LINE = 109, TEXT_GAP = 12, DUO_ROW = 98 + 14;   // 952:47231: iPhone names at y 410 (rail 265 + 24 + 109 + 12)
