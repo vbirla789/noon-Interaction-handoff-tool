@@ -817,20 +817,6 @@ img.contain { object-fit: contain; }
 
 /* Bottom nav on the PLP slides up from below */
 .bnav--plp { transform: translate3d(0, 88px, 0); }
-/* 109:23258 Main bottom Nav (PLP): white, soft top shadow; five 67×63 items spread across (16px sides),
-   each a 4px active bar (white — invisible), 8px gap, then a 32px icon over a 12px Figtree label;
-   below, the 25px home-bar strip (124×5 #343D54) */
-.pnav { position: absolute; left: 0; top: 724px; width: 375px; height: 88px; z-index: 20; background: #fff;
-  box-shadow: 0 -4px 12.5px rgba(0,0,0,.06); display: flex; flex-direction: column; }
-.pnav__row { display: flex; align-items: center; justify-content: space-between; padding: 0 16px; }
-.pnav__it { flex: none; width: 67px; height: 63px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
-.pnav__bar { display: block; flex: none; width: 43px; height: 4px; }
-.pnav__cell { flex: 1 0 0; width: 67px; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 1px; }
-.pnav__cell img { width: 32px; height: 32px; flex: none; }
-.pnav__t { font-family: var(--fig); font-weight: 500; font-size: 12px; line-height: 20.018px; letter-spacing: -0.1601px; color: #666d85; white-space: nowrap; }
-.pnav__it.is-on .pnav__t { font-weight: 700; color: #1155cb; }
-.pnav__home { height: 25px; display: flex; align-items: center; justify-content: center; padding: 12px 0 8px; background: #fff; }
-.pnav__home span { display: block; width: 124px; height: 5px; border-radius: 8px; background: #343d54; }
 
 /* ══ 926:26273 "The iPhone roster" widget — between the chips and the grid.
    Collapsed (height 0) until the grid settles; opens to 295px so the grid
