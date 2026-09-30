@@ -450,9 +450,9 @@ const PP = (() => {
 
   /* Cards — Figma repeats one pair in all four rows */
   const PRODUCTS = [
-    { id: '944:32221', best: true, img: `<img class="pcard__img" src="${A}ad33a.png" alt="" />`,
+    { id: '958:54228', best: true, img: `<img class="pcard__img" src="${A}ad33a.png" alt="" />`,
       title: 'Apple iPhone 18 Pro 256GB (eSIM only) Burgundy 5G With FaceTime - International Version', reviews: 130, price: '5396' },
-    { id: '944:32311', best: false, img: `<span class="pcard__imgbox"><img src="${A}ee989.png" alt="" /></span>`,
+    { id: '958:54318', best: false, img: `<span class="pcard__imgbox"><img src="${A}ee989.png" alt="" /></span>`,
       title: 'Apple iPhone 18 Pro Max 256GB (eSIM only) Black 5G With FaceTime - International VersionDeck,and More Black', reviews: 12, price: '6799' },
   ];
   const card = (p) => `
@@ -773,6 +773,32 @@ const Sfx = (() => {
      (Inline Figma image sizes are used — the PLP may not be laid out yet.)                          */
   // The Duo keeps its own Figma layout (937:30005: 98px image at the top, name 14px below → y 406, Notify
   // pill under it), so the pill sits 9px clear of the ruler's dot; it scales about its own text-row top.
+  /* Colourway mix: every load shuffles black and burgundy across the nine iPhone slots (4 or 5 of each,
+     never three of one colour in a row). Burgundy keeps its original cover framing; black keeps Figma's
+     116% crop (that shot sits smaller in its 660×900 canvas), so both read at the same size in a slot. */
+  (function mixColourways() {
+    const phones = items.slice(1).map((el) => el.querySelector('.rp__img img'));
+    const n = phones.length;
+    let pick;
+    do { pick = phones.map(() => Math.random() < 0.5); }
+    while (Math.abs(pick.filter(Boolean).length * 2 - n) > 1 || pick.some((v, i) => i > 1 && v === pick[i - 1] && v === pick[i - 2]));
+    phones.forEach((im, i) => {
+      if (!pick[i]) return;
+      im.src = im.src.replace(/ee989\.png$/, 'ad33a.png');
+      im.className = 'cover'; im.removeAttribute('style');
+    });
+  })();
+  /* Pricing mix: every load re-rolls each iPhone's "Starting" price inside its generation's band (bases
+     500 apart, ±200 in steps of 100, always ending in 99), so newer models always cost more and the
+     4-digit "Starting Đ####" format and layout never change. */
+  (function mixPrices() {
+    const BASE = { 18: 5299, 17: 4799, 16: 4299, 15: 3799, 14: 3299, 13: 2799, 12: 2299, 11: 1799 };
+    items.slice(1).forEach((el) => {
+      const gen = +(el.querySelector('.rp__name').textContent.match(/\d+/) || [0])[0], price = el.querySelector('.rp__price');
+      if (!BASE[gen] || !price) return;
+      price.textContent = `Starting \uE001${BASE[gen] + 100 * (Math.floor(Math.random() * 5) - 2)}`;
+    });
+  })();
   const IMG_LINE = 109, TEXT_GAP = 12, DUO_ROW = 98 + 14;   // 952:47231: iPhone names at y 410 (rail 265 + 24 + 109 + 12)
   items.forEach((el, i) => {
     const img = el.querySelector('.rp__img');
