@@ -670,14 +670,30 @@ const PP = (() => {
   }
 
   const PARALLAX = 0.25;              // widget travel ÷ grid travel
+  /* Option 3 — reveal 1:1 with the ProtoPie recording
+     cloud.protopie.io/p/041e0f998b5182ed0ca8ce6d/r/be662fe6 (read from its
+     numberValues; every track fits the handoff spring, stiffness 280.6 /
+     damping 27.14 — PP.spring — to 0.09–0.1% RMS):
+       t = 0     grid pushes down (the box grows 0 → H) on the spring
+       t = 0     the slider card DROPS IN from 30px above and scales 90% → 100%
+                 on the SAME spring (one progress value, so both overshoot
+                 together: 1.3% — 0.4px low, 100.13%)
+       t = 17ms  …and fades in over 300ms on the recorded ease-out (REVEAL_FADE)
+       t = 41ms  the heading rises 6px on the spring
+       t = 58ms  …and fades in, same 300ms curve
+     (start offsets fitted per track against the recording, ±1ms). No parallax. */
+  const REVEAL = { CARD_FROM: -30, CARD_SCALE: 0.9, HEAD_RISE: 6, CARD_FADE_AT: 17, HEAD_AT: 41, HEAD_FADE_AT: 58, FADE_MS: 300 };
+  const REVEAL_FADE = 'linear(0, 0.1202, 0.2309, 0.3305, 0.4218, 0.5033, 0.5773, 0.6428, 0.7018, 0.7532, 0.7988, 0.838, 0.8722, 0.9008, 0.9252, 0.945, 0.9612, 0.9737, 0.9834, 0.9902, 0.995, 0.9978, 0.9994, 0.9999, 1)';
+  const revealFade = (el, delay = 0) => el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: REVEAL.FADE_MS, delay, easing: REVEAL_FADE, fill: 'both' });
   function open() {
     running = true;
-    // grid edge: the box grows 0 → 286 and the grid below rides on it
+    // grid edge: the box grows 0 → H and the grid below rides on it
     PP.commit(roster, [PP.spring(roster, 0, H, (v) => ({ height: `${(+v).toFixed(2)}px` }))], { height: H + 'px' });
-    // the widget behind it: same spring, a quarter of the travel
-    PP.commit(inner, [PP.moveY(inner, -H * PARALLAX, 0)], { transform: '' });
-    lines.forEach(riseLine);          // the heading rises in from below with a soft spring
-    PP.commit(rail, [PP.fade(rail, 0, 1, { curve: 'out', ms: PP.OUT_LONG_MS, delay: 25 })], { opacity: 1 });
+    // the slider card: drop + scale on one spring progress, plus the fade
+    const card = PP.spring(rail, 0, 1, (p) => ({ transform: `translateY(${((1 - p) * REVEAL.CARD_FROM).toFixed(3)}px) scale(${(REVEAL.CARD_SCALE + (1 - REVEAL.CARD_SCALE) * p).toFixed(4)})` }));
+    PP.commit(rail, [card, revealFade(rail, REVEAL.CARD_FADE_AT)], { opacity: 1, transform: '' });
+    // the heading, 41ms behind (its fade 58ms)
+    lines.forEach((el) => PP.commit(el, [PP.moveY(el, REVEAL.HEAD_RISE, 0, { delay: REVEAL.HEAD_AT }), revealFade(el, REVEAL.HEAD_FADE_AT)], { opacity: 1, transform: '' }));
     roster.dispatchEvent(new CustomEvent('roster:reveal'));   // the slider runs its first-time hint
   }
 
@@ -1260,7 +1276,14 @@ const Sfx = (() => {
   const here = document.documentElement.dataset.variant || '1';
   const want = new URLSearchParams(location.search).get('v');
   if (want && PATHS[want] && want !== here) { location.replace(PATHS[want]); return; }
-  nav.querySelectorAll('.vswitch__b').forEach((b) => {
+  // Reset: restart the whole flow on this option — a clean reload back to Home
+  // (search, results, widget, first-time hint and Notify state all start fresh)
+  const reset = document.getElementById('vreset');
+  if (reset) reset.addEventListener('click', () => {
+    reset.classList.add('is-spinning');
+    setTimeout(() => location.replace(PATHS[here]), 260);   // let the icon turn before the page restarts
+  });
+  nav.querySelectorAll('.vswitch__b[data-v]').forEach((b) => {
     b.setAttribute('aria-pressed', String(b.dataset.v === here));
     b.addEventListener('click', () => { if (b.dataset.v !== here) location.href = PATHS[b.dataset.v]; });
   });

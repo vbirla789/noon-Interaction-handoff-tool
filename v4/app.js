@@ -1260,7 +1260,14 @@ const Sfx = (() => {
   const here = document.documentElement.dataset.variant || '1';
   const want = new URLSearchParams(location.search).get('v');
   if (want && PATHS[want] && want !== here) { location.replace(PATHS[want]); return; }
-  nav.querySelectorAll('.vswitch__b').forEach((b) => {
+  // Reset: restart the whole flow on this option — a clean reload back to Home
+  // (search, results, widget, first-time hint and Notify state all start fresh)
+  const reset = document.getElementById('vreset');
+  if (reset) reset.addEventListener('click', () => {
+    reset.classList.add('is-spinning');
+    setTimeout(() => location.replace(PATHS[here]), 260);   // let the icon turn before the page restarts
+  });
+  nav.querySelectorAll('.vswitch__b[data-v]').forEach((b) => {
     b.setAttribute('aria-pressed', String(b.dataset.v === here));
     b.addEventListener('click', () => { if (b.dataset.v !== here) location.href = PATHS[b.dataset.v]; });
   });

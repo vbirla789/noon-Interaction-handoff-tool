@@ -846,22 +846,20 @@ img.contain { object-fit: contain; }
 .rp.is-sel .rp__name { font-weight: 600; letter-spacing: -0.5px; color: #000; }
 .rp { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .rp__price { font-weight: 400; font-size: 13px; line-height: normal; color: rgba(0,0,0,.6); white-space: nowrap; text-align: center; }
-.rp__notify {   /* 948:42355 "CTA" — unselected: 97×30, 1px inside stroke counted in layout, padding 6/10 → 7/11 here */
+.rp__notify {   /* 955:52151 "CTA" — unselected: 97×30, 1px inside stroke counted in layout, padding 6/10 → 7/11 here */
   position: absolute; left: 4px; top: 138px;
   display: flex; align-items: center; gap: 4px; padding: 7px 11px;
   border-radius: 43px; background: #fff; box-shadow: inset 0 0 0 1px #fadbda;
   font-weight: 500; font-size: 12px; line-height: 16px; letter-spacing: 0; white-space: nowrap;
 }
-/* "Notify me": Noontree Medium 12/16 with the Figma left→right gradient fill, in its 55×16 text box */
-.rp__cta { display: block; width: 55px; height: 16px;
-  background: linear-gradient(90deg, rgb(105,143,227) 0%, rgb(210,102,78) 58.7%, rgb(193,20,102) 100%);
-  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
+/* 955:52151 "Notify me": Noontree Medium 12/16, solid #F7306F (matches the bell), in its 55×16 text box */
+.rp__cta { display: block; width: 55px; height: 16px; text-align: center; color: #f7306f; }
 .rp__notify img { width: 16px; height: 16px; flex: none; }
-/* 948:43449 selected state — after the tap the pill becomes 133×30 (1px inside stroke counted in layout,
+/* 955:53245 selected state — after the tap the pill becomes 133×30 (1px inside stroke counted in layout,
    padding 6/8 → 7/9 here since the stroke is an inset shadow), centred under the Duo: (−15, 138) in the card */
 .rp__done { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 4px;
   white-space: nowrap; opacity: 0; pointer-events: none; }
-.rp__done b { display: block; width: 95px; font-weight: 400; font-size: 12px; line-height: normal; letter-spacing: -0.09px; color: #c82d74; }   /* Figma's 95px text box → label at x 21, check at x 120 */
+.rp__done b { display: block; width: 95px; font-weight: 400; font-size: 12px; line-height: normal; letter-spacing: -0.09px; color: #f7306f; text-align: center; }   /* Figma's 95px text box → label at x 21, check at x 120 */
 .rp__done img { width: 16px; height: 16px; flex: none; }
 .rp__notify.is-done { left: -15px; top: 138px; width: 133px; height: 30px; padding: 7px 9px; justify-content: center; cursor: default; }
 .rp__notify.is-done > span:first-child, .rp__notify.is-done > img { opacity: 0; }
@@ -927,4 +925,10 @@ img.contain { object-fit: contain; }
 .vswitch__b[aria-pressed="true"] { background: #e33c4d; color: #fff; }
 .vswitch__b:focus-visible { outline: 2px solid #e33c4d; outline-offset: 2px; }
 @media (max-width: 520px) { .vswitch { display: none; } }   /* phone-sized screens: no room beside the frame */
+/* Reset — restarts the whole flow on this option (below the numbers, after a hairline) */
+.vswitch__sep { display: block; width: 24px; height: 1px; margin: 2px auto; background: #e3e3e3; }
+.vswitch__reset { color: #0c0c0c; }
+.vswitch__reset svg { transition: transform .45s cubic-bezier(.2, .9, .3, 1); }
+.vswitch__reset:hover svg { transform: rotate(-35deg); }
+.vswitch__reset.is-spinning svg { transform: rotate(-360deg); transition-duration: .5s; }
 
