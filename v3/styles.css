@@ -934,4 +934,12 @@ img.contain { object-fit: contain; }
 .vswitch__reset svg { transition: transform .45s cubic-bezier(.2, .9, .3, 1); }
 .vswitch__reset:hover svg { transform: rotate(-35deg); }
 .vswitch__reset.is-spinning svg { transform: rotate(-360deg); transition-duration: .5s; }
+/* Spec Sheet — opens the widget-reveal animation spec for this option; its label shows on hover */
+.vswitch__spec { position: relative; color: #0c0c0c; }
+.vswitch__spec::after {
+  content: attr(data-tip); position: absolute; right: calc(100% + 12px); top: 50%; transform: translate(4px, -50%);
+  padding: 6px 10px; border-radius: 8px; background: #0c0c0c; color: #fff; font-size: 13px; font-weight: 600; white-space: nowrap;
+  opacity: 0; pointer-events: none; transition: opacity .18s ease, transform .18s ease;
+}
+.vswitch__spec:hover::after, .vswitch__spec:focus-visible::after { opacity: 1; transform: translate(0, -50%); }
 

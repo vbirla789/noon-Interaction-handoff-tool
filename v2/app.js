@@ -1309,6 +1309,9 @@ const Sfx = (() => {
     reset.classList.add('is-spinning');
     setTimeout(() => location.replace(PATHS[here]), 260);   // let the icon turn before the page restarts
   });
+  // Spec Sheet: the widget-reveal animation spec, opened on this option
+  const spec = document.getElementById('vspec');
+  if (spec) spec.addEventListener('click', () => { location.href = `/spec/?v=${here}`; });
   nav.querySelectorAll('.vswitch__b[data-v]').forEach((b) => {
     b.setAttribute('aria-pressed', String(b.dataset.v === here));
     b.addEventListener('click', () => { if (b.dataset.v !== here) location.href = PATHS[b.dataset.v]; });
