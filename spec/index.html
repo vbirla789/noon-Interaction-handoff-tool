@@ -144,6 +144,7 @@ a { color: inherit; }
 body.is-scrubbing, body.is-scrubbing * { cursor: grabbing !important; user-select: none; }
 .tl__scale { cursor: ew-resize; touch-action: none; }
 .grip { touch-action: none; }
+.buf { position: absolute; left: 0; top: 24px; height: 3px; width: 0; background: #c4b5fd; border-radius: 2px; transition: width .1s linear; }
 .lane { position: absolute; top: 14px; bottom: 30px; left: calc(var(--lab) + 10px); right: 14px; pointer-events: none; }
 .foot { padding: 0 16px 28px calc(var(--lab) + 10px); font-size: 13px; color: var(--ink-2); line-height: 1.6; }
 .foot code { font-family: var(--mono); font-size: 12px; }
@@ -207,7 +208,7 @@ body.is-scrubbing, body.is-scrubbing * { cursor: grabbing !important; user-selec
       <div class="tl__scale" id="scale"></div>
     </div>
     <div class="tl__rows" id="rows"></div>
-    <div class="lane" id="lane"><div class="head" id="head"><button class="grip" id="grip" aria-label="Playhead — drag to scrub, arrow keys step a frame"></button><i class="head__line" id="headLine" aria-hidden="true"></i></div></div>
+    <div class="lane" id="lane"><div class="buf" id="buf"></div><div class="head" id="head"><button class="grip" id="grip" aria-label="Playhead — drag to scrub, arrow keys step a frame"></button><i class="head__line" id="headLine" aria-hidden="true"></i></div></div>
   </div>
   <p class="foot">
     <span class="legend"><i style="background:var(--delay)"></i>delay</span>
@@ -216,7 +217,7 @@ body.is-scrubbing, body.is-scrubbing * { cursor: grabbing !important; user-selec
     <span class="legend"><i class="bar--approx" style="position:static"></i>timing depends on the ruler wave (≈)</span>
     <span class="legend"><i class="bar--repeat" style="position:static"></i>repeats</span><br />
     Times are milliseconds from each scene’s <b>Start</b> (its trigger). Springs are sampled into keyframes (mass 1) or driven per frame; the light bar is the delay before a track starts, the dark bar its animated length.
-    Drag the red playhead (or click the ruler) to scrub the live preview to any moment; ← / → on the playhead step one frame (⇧ 100ms).
+    Each scene is recorded once from the live prototype (the violet bar under the ruler shows how much), then the preview replays the recording — so dragging the red playhead, the ruler or any track shows that exact moment instantly, forwards or backwards. ← / → on the playhead step one frame (⇧ 100ms).
     Frame-driven moments (page pushes, rail landings and everything keyed off them) can shift by ±1 frame (≈16ms) in the live preview. Only scene 4 differs between iterations.
   </p>
 </div>
@@ -686,10 +687,23 @@ body.is-scrubbing, body.is-scrubbing * { cursor: grabbing !important; user-selec
     8: (d) => d.getElementById('searchBack').click(),
   };
 
-  let front = null, pool = [], gen = 0, mode = 'idle', seekBusy = false, seekTarget = null, loopBusy = false;
-  let hlBox = null;
+  /* ═══ record once, scrub instantly ══════════════════════════════════════════
+     A hidden RECORDER frame (the real prototype on the virtual clock above) plays
+     the scene once, frame by frame (120fps, 60fps for the long overview). Every
+     visual change is logged per element: style / class / hidden attributes,
+     every running animation's computed values (WAAPI, CSS animations incl.
+     ::after, transitions), structural changes, input values and scroll offsets.
+     The visible DISPLAY frame is a static, script-free copy of the recorder's
+     page taken just before the trigger; showing time T = applying each log's
+     value at T. So the screen follows the playhead within the same frame,
+     forwards or backwards, at any speed — playback and scrubbing are one
+     lookup. Recording runs faster than real time, time-sliced so the UI stays
+     smooth; playback can start while it is still recording.                    */
+  let gen = 0, mode = 'idle', REC = null, playT = 0, headT = null, lastShown = -1;
+  let hlBox = null, hlSel = null, hlAt = -1;
+  const disp = () => (REC && REC.disp ? REC.disp : null);
   function highlight(sel) {
-    if (!front) return; const d = front.w.document;
+    hlSel = sel; const D = disp(); if (!D) return; const d = D.d;
     if (!hlBox || !hlBox.isConnected) { hlBox = d.createElement('div'); hlBox.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:2147483647'; d.body.appendChild(hlBox); }
     if (!sel) { hlBox.innerHTML = ''; return; }
     const els = [...d.querySelectorAll(sel)].slice(0, 12);
@@ -698,8 +712,8 @@ body.is-scrubbing, body.is-scrubbing * { cursor: grabbing !important; user-selec
       return `<i style="position:fixed;left:${b.left}px;top:${b.top}px;width:${b.width}px;height:${Math.max(2, b.height)}px;outline:1.5px solid #8b5cf6;outline-offset:1px;border-radius:2px"></i>`; }).join('');
   }
   async function makeFrame() {
-    const g = gen, scene = sc;
-    const f = document.createElement('iframe'); f.title = 'Prototype preview'; f.tabIndex = -1;
+    const scene = sc;
+    const f = document.createElement('iframe'); f.title = 'Recorder'; f.tabIndex = -1; f.setAttribute('aria-hidden', 'true');
     f.src = PATHS[v] + '?spec=' + Date.now();
     phone.insertBefore(f, $('veil'));
     await new Promise((r) => f.addEventListener('load', r, { once: true }));
@@ -707,71 +721,140 @@ body.is-scrubbing, body.is-scrubbing * { cursor: grabbing !important; user-selec
     await w.document.fonts.ready;
     await eng.advanceTo(eng.vt + 100, 48);
     if (PREP[scene]) await ST[PREP[scene]](w.document, w, eng);
-    return { g, scene, f, w, eng, started: false };
+    return { f, w, eng };
   }
-  const dropFrame = (fr) => { if (fr && fr.f) fr.f.remove(); };
-  // fire the scene's trigger on a frame (its own Start = t0)
-  async function fireOn(fr) {
-    fr.t0 = fr.eng.now();
-    if (SCENES[sc].overview) beats.forEach((bt) => fr.w.setTimeout(() => { try { bt.fire(fr.w.document, fr.w); } catch (_) {} }, bt.at));
-    else await FIRE[sc](fr.w.document, fr.w);
-    await flush();
-    fr.started = true;
-  }
-  /* Standbys wait at checkpoints across the scene (Start, ⅓, ⅔), already fired and
-     fast-forwarded, so a drag backwards only has to replay from the nearest one.
-     They build one after another (the next one needed always builds alone) and
-     refills wait for the drag to pause.                                          */
-  let refillT = 0, chain = Promise.resolve();
-  const checkpoints = () => [0, END / 3, (2 * END) / 3].map(Math.round);
-  function build(c) {
-    const g = gen, e = { c, ready: false, fr: null };
-    e.p = chain = chain.then(async () => {
-      if (g !== gen) return null;
-      const fr = await makeFrame();
-      if (g !== gen) { dropFrame(fr); return null; }
-      await fireOn(fr);
-      if (c > 0) await fr.eng.advanceTo(fr.t0 + c);
-      e.ready = true; e.fr = fr; return fr;
-    }).catch(() => null);
-    pool.push(e);
-  }
-  function fillPool() {
-    clearTimeout(refillT);
-    if (!pool.some((e) => e.c === 0)) build(0);                 // Start comes first
-    refillT = setTimeout(() => { for (const c of checkpoints()) if (!pool.some((e) => e.c === c)) build(c); }, 350);
-  }
-  // bring the best standby for time T to the front
-  async function takeStandby(T) {
-    fillPool();
-    const ok = pool.filter((e) => e.c <= T + 0.5);
-    const ready = ok.filter((e) => e.ready).sort((x, y) => y.c - x.c)[0];
-    const e = ready || ok.sort((x, y) => x.c - y.c)[0];
-    pool.splice(pool.indexOf(e), 1);
-    const fr = await e.p; fillPool();
-    if (!fr || fr.g !== gen) { dropFrame(fr); return takeStandby(T); }
-    const old = front; front = fr; hlBox = null;
-    front.f.classList.add('is-front'); dropFrame(old);
-    $('veil').hidden = true;
-  }
-  const sceneT = () => (front && front.started ? front.eng.vt - front.t0 : 0);
-  async function seekTo(T) {
-    seekTarget = Math.max(0, Math.min(END, T));
-    if (seekBusy) return; seekBusy = true;
-    try {
-      while (seekTarget != null) {
-        const t = seekTarget; seekTarget = null;
-        await idleLoop();
-        const cur = front && front.started && front.g === gen ? sceneT() : -1;
-        // a standby closer to t than the current frame (or anything when going back) wins
-        const better = pool.some((e) => e.ready && e.c <= t + 0.5 && e.c > cur + 300);
-        if (cur < 0 || t < cur - 0.5 || better) await takeStandby(t);
-        await front.eng.advanceTo(front.t0 + t);
-        paint();
+  const kebab = (p) => (p === 'cssFloat' ? 'float' : p.replace(/[A-Z]/g, (m) => '-' + m.toLowerCase()));
+  const SKIP = new Set(['offset', 'computedOffset', 'easing', 'composite']);
+  function at(arr, T) { let lo = 0, hi = arr.length - 1, k = -1; while (lo <= hi) { const m = (lo + hi) >> 1; if (arr[m][0] <= T) { k = m; lo = m + 1; } else hi = m - 1; } return k < 0 ? arr[0][1] : arr[k][1]; }
+  function push(arr, t, val) { const l = arr[arr.length - 1]; if (l[1] === val) return; if (l[0] === t) l[1] = val; else arr.push([t, val]); }
+  const nextFrame = () => new Promise((r) => requestAnimationFrame(() => r()));
+
+  async function record(g) {
+    const fr = await makeFrame();
+    if (g !== gen) { fr.f.remove(); return; }
+    const { w, eng } = fr, d = w.document;
+    // key every element, then take the static copy the display is built from
+    let K = 0; for (const el of d.querySelectorAll('*')) el.setAttribute('data-sk', K++);
+    const clone = d.documentElement.cloneNode(true);
+    clone.querySelectorAll('script').forEach((s) => s.remove());
+    const head = clone.querySelector('head');
+    const base = d.createElement('base'); base.href = location.origin + PATHS[v]; head.prepend(base);
+    const freeze = d.createElement('style'); freeze.textContent = '*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}'; head.append(freeze);
+    const ovs = d.createElement('style'); ovs.id = '__specov'; head.append(ovs);
+    const html = '<!doctype html>' + clone.outerHTML;
+    const pristine = new DOMParser().parseFromString(html, 'text/html');
+    // display frame
+    const df = document.createElement('iframe'); df.title = 'Prototype preview'; df.srcdoc = html;
+    phone.insertBefore(df, $('veil'));
+    await new Promise((r) => df.addEventListener('load', r, { once: true }));
+    if (g !== gen) { fr.f.remove(); df.remove(); return; }
+    const dd = df.contentDocument;
+    await Promise.race([Promise.all([dd.fonts.ready, ...[...dd.images].map((im) => (im.decode ? im.decode().catch(() => {}) : 0))]), realWait(1500)]);
+    // logs, keyed by element
+    const logs = new Map();
+    const R = (sk) => { let r = logs.get(sk); if (!r) logs.set(sk, (r = { ov: new Map(), ps: new Map() })); return r; };
+    const rec = { g, logs, upTo: -1, done: false, disp: { f: df, d: dd, map: new Map(), ov: dd.getElementById('__specov'), css: '' } };
+    // initial input values + scroll offsets
+    const inputs = [...d.querySelectorAll('input, textarea')];
+    const scrollers = [...d.querySelectorAll('*')].filter((el) => { const cs = w.getComputedStyle(el); return /(auto|scroll)/.test(cs.overflowY + cs.overflowX); });
+    inputs.forEach((el) => { R(el.dataset.sk).val = [[-1, el.value]]; });
+    scrollers.forEach((el) => { R(el.dataset.sk).sc = [[-1, `${el.scrollTop},${el.scrollLeft}`]]; });
+    let moBuf = [];
+    const mo = new w.MutationObserver((list) => { moBuf.push(...list); });   // records delivered between captures must not be lost
+    mo.observe(d, { subtree: true, attributes: true, attributeFilter: ['style', 'class', 'hidden'], attributeOldValue: true, childList: true, characterData: true });
+    const propCache = new WeakMap(), active = new Set();
+    function capture(t) {
+      // attributes + structure
+      const dirty = new Set();
+      const muts = moBuf.concat(mo.takeRecords()); moBuf = [];
+      for (const m of muts) {
+        if (m.type === 'attributes') {
+          const el = m.target; if (el === hlBox) continue;
+          let sk = el.getAttribute('data-sk'); if (sk == null) { el.setAttribute('data-sk', sk = String(K++)); }
+          const r = R(sk), key = m.attributeName === 'style' ? 'st' : m.attributeName === 'class' ? 'cl' : 'hd';
+          if (!r[key]) r[key] = [[-1, m.oldValue]];
+          push(r[key], t, el.getAttribute(m.attributeName));
+        } else {
+          const p = m.target.nodeType === 1 ? m.target : m.target.parentElement;
+          if (p) dirty.add(p);
+        }
       }
-    } finally { seekBusy = false; if (scrubbing == null) headT = null; }
+      for (const p of dirty) {
+        let a = p.parentElement, covered = false; while (a) { if (dirty.has(a)) { covered = true; break; } a = a.parentElement; }
+        if (covered || !p.isConnected) continue;
+        for (const el of p.querySelectorAll('*')) if (!el.hasAttribute('data-sk')) el.setAttribute('data-sk', String(K++));
+        let sk = p.getAttribute('data-sk'); if (sk == null) continue;
+        const r = R(sk); if (!r.x) { const o = pristine.querySelector(`[data-sk="${sk}"]`); r.x = [[-1, o ? o.innerHTML : '']]; }
+        push(r.x, t, p.innerHTML);
+      }
+      // animated values (computed), incl. pseudo-elements
+      const seen = new Set();
+      for (const an of d.getAnimations()) {
+        const ef = an.effect; if (!ef || !ef.target) continue;
+        const tgt = ef.target, sk = tgt.getAttribute('data-sk'); if (sk == null) continue;
+        let props = propCache.get(an);
+        if (!props) { const s = new Set(); try { for (const kf of ef.getKeyframes()) for (const p in kf) if (!SKIP.has(p)) s.add(kebab(p)); } catch (_) {} if (an.transitionProperty) s.add(an.transitionProperty); propCache.set(an, (props = [...s])); }
+        const pseudo = ef.pseudoElement || '', cs = w.getComputedStyle(tgt, pseudo || null), r = R(sk), map = pseudo ? r.ps : r.ov;
+        for (const p of props) {
+          const key = pseudo ? `${pseudo}|${p}` : p, id = `${sk}#${key}`;
+          let arr = map.get(key); if (!arr) map.set(key, (arr = [[-1, null]]));
+          push(arr, t, cs.getPropertyValue(p)); seen.add(id); active.add(id);
+        }
+      }
+      for (const id of active) if (!seen.has(id)) { active.delete(id); const [sk, key] = id.split('#'); const r = logs.get(sk); const arr = (key.includes('|') ? r.ps : r.ov).get(key); push(arr, t, null); }
+      inputs.forEach((el) => push(logs.get(el.dataset.sk).val, t, el.value));
+      scrollers.forEach((el) => push(logs.get(el.dataset.sk).sc, t, `${el.scrollTop},${el.scrollLeft}`));
+      rec.upTo = t;
+    }
+    REC = rec; hlBox = null; lastShown = -1;
+    df.classList.add('is-front');
+    [...phone.querySelectorAll('iframe.is-front')].forEach((f) => { if (f !== df) f.remove(); });
+    $('veil').hidden = true;
+    // fire the trigger at Start and record
+    capture(0);
+    const t0 = eng.now();
+    if (SCENES[sc].overview) beats.forEach((bt) => w.setTimeout(() => { try { bt.fire(d, w); } catch (_) {} }, bt.at));
+    else await FIRE[sc](d, w);
+    await flush();
+    if (mode === 'idle') setMode('playing');
+    const dt = END > 6000 ? 1000 / 60 : 1000 / 120;
+    let slice = performance.now();
+    for (let t = dt; t <= END + dt / 2 && g === gen; t += dt) {
+      await eng.advanceTo(t0 + t, dt);
+      capture(Math.min(t, END));
+      if (performance.now() - slice > 10) { await nextFrame(); slice = performance.now(); }   // keep the page responsive
+    }
+    mo.disconnect();
+    if (g === gen) { rec.upTo = END; rec.done = true; }
+    fr.f.remove();                                              // the recording is all the display needs
   }
-  const idleLoop = () => new Promise((r) => { const c = () => (loopBusy ? requestAnimationFrame(c) : r()); c(); });
+
+  // show time T on the display: each element's logged state at T
+  function applyAt(T) {
+    const D = disp(); if (!D) return;
+    const d = D.d, map = D.map, logs = REC.logs;
+    const elOf = (sk) => { let el = map.get(sk); if (!el || !el.isConnected) { el = d.querySelector(`[data-sk="${sk}"]`); if (el) map.set(sk, el); } return el; };
+    let restruct = false;
+    for (const [sk, r] of logs) if (r.x) { const val = at(r.x, T); if (r.xa !== val) { const el = elOf(sk); if (el) { el.innerHTML = val; restruct = true; } r.xa = val; } }
+    if (restruct) { map.clear(); hlBox = null; for (const r of logs.values()) r.sa = r.ca = r.ha = r.va = r.sca = undefined; }
+    let css = '';
+    for (const [sk, r] of logs) {
+      const el = elOf(sk); if (!el) continue;
+      if (r.st || r.ov.size) {
+        if (r.st0 === undefined) r.st0 = el.getAttribute('style') || '';
+        let s = r.st ? at(r.st, T) || '' : r.st0;
+        for (const [p, arr] of r.ov) { const val = at(arr, T); if (val) s += `;${p}:${val}`; }
+        if (s !== r.sa) { if (s) el.setAttribute('style', s); else el.removeAttribute('style'); r.sa = s; }
+      }
+      if (r.cl) { const c = at(r.cl, T); if (c !== r.ca) { if (c == null) el.removeAttribute('class'); else el.setAttribute('class', c); r.ca = c; } }
+      if (r.hd) { const h = at(r.hd, T); if (h !== r.ha) { if (h == null) el.removeAttribute('hidden'); else el.setAttribute('hidden', h); r.ha = h; } }
+      if (r.val) { const x = at(r.val, T); if (x !== r.va) { el.value = x; r.va = x; } }
+      if (r.sc) { const x = at(r.sc, T); if (x !== r.sca) { const [top, left] = x.split(','); el.scrollTop = +top; el.scrollLeft = +left; r.sca = x; } }
+      for (const [key, arr] of r.ps) { const val = at(arr, T); if (val) { const [ps, p] = key.split('|'); css += `[data-sk="${sk}"]${ps}{${p}:${val}!important}`; } }
+    }
+    if (css !== D.css) { D.ov.textContent = css; D.css = css; }
+  }
+
   function setMode(m) {
     mode = m;
     $('playIco').innerHTML = m === 'playing' ? '<rect x="2" y="1.5" width="4" height="15" rx="1" fill="#1d1d1f"/><rect x="10" y="1.5" width="4" height="15" rx="1" fill="#1d1d1f"/>' : '<path d="M1 1.5v15L15 9z" fill="#1d1d1f"/>';
@@ -779,48 +862,53 @@ body.is-scrubbing, body.is-scrubbing * { cursor: grabbing !important; user-selec
     $('play').setAttribute('aria-label', m === 'playing' ? 'Pause' : 'Play');
   }
   function paint() {
-    const t = headT != null ? headT : mode === 'live' ? END : sceneT(); setHead(t);
-    $('state').textContent = `${fmtS(Math.min(t, END))} / ${fmtS(END)}${mode === 'paused' ? ' · paused' : mode === 'live' ? ' · done' : ''}`;
-    if (selected >= 0 && rows[selected] && rows[selected].sel) highlight(rows[selected].sel);
+    const T = headT ?? playT, up = REC ? (REC.done ? END : Math.max(0, REC.upTo)) : 0;
+    const shown = Math.min(T, up);
+    if (shown !== lastShown) { const c0 = performance.now(); applyAt(shown); if (window.__spec) (window.__spec.cost ||= []).push(performance.now() - c0); lastShown = shown; hlAt = -1; }
+    setHead(T);
+    $('buf').style.width = `${(up / END) * 100}%`;
+    $('state').textContent = `${fmtS(Math.min(T, END))} / ${fmtS(END)}${REC && !REC.done ? ` · recording ${Math.round((up / END) * 100)}%` : mode === 'paused' ? ' · paused' : mode === 'done' ? ' · done' : ''}`;
+    if (hlSel && hlAt !== shown) { highlight(hlSel); hlAt = shown; }
   }
   let lastTs = performance.now();
-  async function loop(ts) {
-    const dt = Math.min(80, ts - lastTs); lastTs = ts;
-    if (front && front.started && !seekBusy && !loopBusy && (mode === 'playing' || mode === 'live')) {
-      loopBusy = true;
-      try {
-        let target = front.eng.vt + dt * (mode === 'playing' ? SPEEDS[speedIdx] : 1);
-        if (mode === 'playing' && target - front.t0 >= END) target = front.t0 + END;
-        await front.eng.advanceTo(target);
-        if (mode === 'playing' && front.eng.vt - front.t0 >= END - 0.01) setMode('live');   // keeps running, so the preview stays interactive
-      } finally { loopBusy = false; }
+  function loop(ts) {
+    const dt = Math.min(64, ts - lastTs); lastTs = ts;
+    if (mode === 'playing' && REC) {
+      const up = REC.done ? END : Math.max(0, REC.upTo);
+      playT = Math.min(playT + dt * SPEEDS[speedIdx], END);
+      if (playT > up) playT = up;                               // never run ahead of the recording
+      if (playT >= END) { playT = END; setMode('done'); }
     }
-    if (front && mode !== 'idle') paint();
+    if (REC) paint();
     requestAnimationFrame(loop);
   }
   requestAnimationFrame(loop);
-  async function rebuild() {                                    // scene or iteration changed
-    gen++; setMode('idle');
-    clearTimeout(refillT); pool.forEach((e) => e.p.then(dropFrame, () => {})); pool = []; chain = Promise.resolve();
-    if (!front) { $('veil').hidden = false; $('veil').textContent = 'Loading the prototype…'; }
-    fillPool();
-    try { await seekTo(0); setMode('playing'); } catch (e) { $('veil').hidden = false; $('veil').textContent = 'Preview unavailable — try ▶ again.'; }
+  // ?debug: a hook for automated checks (a separate live frame driven to the same instant)
+  if (qs.has('debug')) window.__spec = { async truth(T) { const fr = await makeFrame(); const t0 = fr.eng.now();
+    if (SCENES[sc].overview) beats.forEach((bt) => fr.w.setTimeout(() => bt.fire(fr.w.document, fr.w), bt.at)); else await FIRE[sc](fr.w.document, fr.w);
+    await flush(); const dt = END > 6000 ? 1000 / 60 : 1000 / 120; for (let t = dt; t <= T + 1e-6; t += dt) await fr.eng.advanceTo(t0 + t, dt); return fr.f; }, get ready() { return !!(REC && REC.done); }, get REC() { return REC; } };
+  async function rebuild() {                                    // scene or iteration changed: record it
+    const g = ++gen; setMode('idle'); playT = 0; headT = null; REC = null; lastShown = -1;
+    [...phone.querySelectorAll('iframe:not(.is-front)')].forEach((f) => f.remove());
+    $('veil').hidden = !phone.querySelector('iframe.is-front'); $('veil').textContent = 'Recording the scene…';
+    setHead(0); $('buf').style.width = '0%';
+    try { await record(g); } catch (e) { if (g === gen) { $('veil').hidden = false; $('veil').textContent = 'Preview unavailable — reload to try again.'; } }
   }
-  async function togglePlay() {
-    if (mode === 'playing') { setMode('paused'); paint(); return; }
-    if (!front || !front.started || front.g !== gen || mode === 'live' || sceneT() >= END - 1) { setMode('paused'); await seekTo(0); }
+  function togglePlay() {
+    if (!REC) return;
+    if (mode === 'playing') { setMode('paused'); return; }
+    if (playT >= END - 1) playT = 0;
     setMode('playing');
   }
-  // drag the playhead (or click the ruler) to scrub
-  /* Scrubbing: press on the pin, the line, the ruler or any track and drag. The playhead
-     follows the cursor 1:1 (headT) while the preview catches up behind it; a press on a track
-     that doesn't move also selects that track.                                             */
-  let scrubbing = null, headT = null, downX = 0, downRow = null;
+  /* Scrubbing: press on the pin, the line, the ruler or any track and drag — the display
+     shows that exact moment in the same frame. A press on a track that doesn't move also
+     selects that track.                                                                  */
+  let scrubbing = null, downX = 0, downRow = null;
   function scrubAt(clientX) {
     const r = $('lane').getBoundingClientRect();
     const T = Math.max(0, Math.min(END, ((clientX - r.left) / r.width) * END));
-    if (mode !== 'paused') setMode('paused');
-    headT = T; paint(); seekTo(T);
+    if (mode === 'playing' || mode === 'done' || mode === 'idle') setMode('paused');
+    playT = T; headT = null; paint();
   }
   const onMove = (e) => { if (e.pointerId === scrubbing) { e.preventDefault(); if (Math.abs(e.clientX - downX) > 2) downRow = null; scrubAt(e.clientX); } };
   const onUp = (e) => {
@@ -828,7 +916,6 @@ body.is-scrubbing, body.is-scrubbing * { cursor: grabbing !important; user-selec
     scrubbing = null; document.body.classList.remove('is-scrubbing');
     removeEventListener('pointermove', onMove); removeEventListener('pointerup', onUp); removeEventListener('pointercancel', onUp);
     if (downRow != null) select(downRow);
-    if (!seekBusy) headT = null;
   };
   function startScrub(e, row = null) {
     if (e.button !== 0 || scrubbing != null) return;
@@ -839,9 +926,9 @@ body.is-scrubbing, body.is-scrubbing * { cursor: grabbing !important; user-selec
   }
   for (const el of [$('scale'), $('grip'), $('headLine')]) el.addEventListener('pointerdown', (e) => startScrub(e));
   $('rows').addEventListener('pointerdown', (e) => { const trk = e.target.closest('.row__trk'); if (trk) startScrub(e, +trk.parentElement.dataset.i); });
-  $('grip').addEventListener('keydown', (e) => { const step = e.shiftKey ? 100 : FR;
+  $('grip').addEventListener('keydown', (e) => { const step = e.shiftKey ? 100 : 1000 / 60;
     if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); setMode('paused');
-      const T = Math.max(0, Math.min(END, (headT ?? sceneT()) + (e.key === 'ArrowRight' ? step : -step))); headT = T; paint(); seekTo(T); } });
+      playT = Math.max(0, Math.min(END, playT + (e.key === 'ArrowRight' ? step : -step))); paint(); } });
 
   function fit() {
     const st = $('stage'), h = st.clientHeight || 520, s = Math.min(1, h / 812);
