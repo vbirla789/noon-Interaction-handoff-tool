@@ -727,19 +727,24 @@ const Sfx = (() => {
   };
 })();
 
-/* ══ Haptics — paired with the slider's clicks ══════════════════════════════
-   tick: each ruler tick crossing the red line (same ≥100ms gate as the sound)
-   snap: a new product taking the slot; tap: the Notify press.
-   · Android / Chrome: the Vibration API (only after a real user gesture —
-     the browser ignores it before one).
-   · iPhone (Safari / WebKit 18+, which has no Vibration API): toggling a
-     hidden native <input type="checkbox" switch> through its <label> makes
-     iOS play its own selection haptic.
-   · A native host that exposes window.webkit.messageHandlers.haptic (e.g. a
-     WKWebView shell) gets the event too and can map it to a UIFeedbackGenerator. */
+/* ══ Haptics — iOS-style feedback for taps and the ruler ═══════════════════
+   Kinds (named after the iOS generators they map to):
+     tick    UISelectionFeedbackGenerator — each ruler tick crossing the red line
+             while dragging / coasting (the picker-wheel feel), ≥40ms apart
+     snap    medium impact @0.8 — a new product taking the slot
+     edge    rigid impact @0.6 — pulling past the first / last product
+     tap     light impact — buttons, links, tabs, chips, cards, suggestions
+     success notification — "You are on the list"
+   Channels, best first (only one plays):
+   · a native host — window.webkit.messageHandlers.haptic (Vercel Sim and any
+     WKWebView shell) → real UIFeedbackGenerators, during drags too
+   · Android / Chrome — the Vibration API (after the first user gesture)
+   · iPhone Safari (WebKit 18+, no Vibration API) — toggling a hidden native
+     <input type="checkbox" switch> plays the system haptic (taps / gestures). */
 const Haptics = (() => {
   const iOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  const VIBE = { tick: 5, snap: 12, tap: 9 };
+  const NATIVE = { tick: 'selection', snap: { type: 'medium', intensity: 0.8 }, edge: { type: 'rigid', intensity: 0.6 }, tap: 'light', success: 'success' };
+  const VIBE = { tick: 4, snap: 12, edge: 10, tap: 8, success: [10, 40, 16] };
   let label = null;
   const sw = () => {
     if (label && label.isConnected) return label;
@@ -751,22 +756,45 @@ const Haptics = (() => {
     label.appendChild(input); document.body.appendChild(label);
     return label;
   };
-  // a tick and a snap landing in the same frame would read as a double bump: within 50ms they merge
-  // (a tick is dropped; a snap after a tick upgrades it — Android's vibrate() replaces the running one)
-  let lastAt = -1e9, lastKind = '';
+  // two pulses inside ~40ms read as one blurred bump (and native hosts merge them): a tick is dropped,
+  // anything stronger waits until the gap has passed (≤40ms — still reads as the same moment)
+  const GAP = 40;
+  let lastAt = -1e9, held = 0;
   function fire(kind) {
-    const now = performance.now(), close = now - lastAt < 50;
-    if (close && (kind === 'tick' || lastKind !== 'tick' || !navigator.vibrate)) return;
-    lastAt = now; lastKind = kind;
+    const now = performance.now(), since = now - lastAt;
+    if (since < GAP) {
+      if (kind === 'tick') return;
+      clearTimeout(held); held = setTimeout(() => fire(kind), GAP - since + 1); return;
+    }
+    lastAt = now;
     try {
-      const native = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.haptic;
-      if (native) native.postMessage(kind);
+      const h = window.webkit && window.webkit.messageHandlers;
+      if (h && h.haptic) { h.haptic.postMessage(NATIVE[kind] || 'light'); return; }
       if (navigator.vibrate) {
         if (!navigator.userActivation || navigator.userActivation.hasBeenActive) navigator.vibrate(VIBE[kind] || 8);
-      } else if (iOS) sw().click();
+        return;
+      }
+      if (iOS) { sw().click(); if (kind === 'success') setTimeout(() => sw().click(), 90); }
     } catch (_) {}
   }
-  return { tick: () => fire('tick'), snap: () => fire('snap'), tap: () => fire('tap') };
+  const api = { tick: () => fire('tick'), snap: () => fire('snap'), edge: () => fire('edge'), tap: () => fire('tap'), success: () => fire('success') };
+
+  // taps on interactive elements: a light impact on press (where iOS plays it), once per press
+  const TAP = 'button, a[href], [role="button"], [role="tab"], .sug, .chip, .tab, .pcard, .rp, #searchEntry, .vswitch__b';
+  let pressed = null;
+  addEventListener('pointerdown', (e) => {
+    const t = e.target.closest && e.target.closest(TAP);
+    if (!t || t.closest('[aria-disabled="true"], :disabled')) return;
+    if (t.closest('.rp__notify')) return;                         // Notify plays its own success haptic
+    if (t.closest('.roster__prods')) { pressed = { t, x: e.clientX, y: e.clientY }; return; }   // slider: only once it's a tap, not a drag
+    pressed = null; api.tap();
+  }, { capture: true, passive: true });
+  addEventListener('pointerup', (e) => {
+    if (!pressed) return;
+    const p = pressed; pressed = null;
+    if (Math.hypot(e.clientX - p.x, e.clientY - p.y) < 6) api.tap();
+  }, { capture: true, passive: true });
+  return api;
 })();
 
 /* ══ Roster slider — ten products, snapping one by one into the slot ══════
@@ -871,7 +899,7 @@ const Haptics = (() => {
   items.forEach((el, i) => { el.setAttribute('role', 'option'); el.dataset.i = i; });
   dot.style.transformOrigin = '50% 50%';
 
-  let x = 0, v = 0, sel = -1, anim = null, drag = null, lastTick = 0, lastTickAt = 0, wheelT = 0, wheel = null;
+  let x = 0, v = 0, sel = -1, anim = null, drag = null, lastTick = 0, lastTickAt = 0, lastHapAt = 0, pastEdge = false, wheelT = 0, wheel = null;
 
   function select(i, sound) {
     if (i === sel) return;
@@ -898,13 +926,19 @@ const Haptics = (() => {
     if (under !== hiddenTick) { if (tickEls[hiddenTick]) tickEls[hiddenTick].style.visibility = ''; if (tickEls[under]) tickEls[under].style.visibility = 'hidden'; hiddenTick = under; }
     ruler.style.setProperty('--start', `${(IND_RULER_X + x).toFixed(2)}px`);   // the ruler begins at the first product's tick
     ruler.style.setProperty('--end', `${(IND_RULER_X + x - X_MIN).toFixed(2)}px`);   // …and ends at the last product's tick
-    const ti = Math.round(-x / TICK);
+    const ti = Math.round(-x / TICK), slot = clampSlot(Math.round(-x / PITCH));
     if (ti !== lastTick) {
       lastTick = ti;
       const now = performance.now();
-      if (sound && now - lastTickAt >= 100) { lastTickAt = now; Sfx.tick(); Haptics.tick(); }
+      if (sound && now - lastTickAt >= 100) { lastTickAt = now; Sfx.tick(); }
+      // haptic tick per ruler tick while dragging / coasting — but not in the frame a product lands
+      // (that one gets the snap) and not past either end (no ruler there)
+      if (sound && slot === sel && x <= 0.5 && x >= X_MIN - 0.5 && now - lastHapAt >= 40) { lastHapAt = now; Haptics.tick(); }
     }
-    select(clampSlot(Math.round(-x / PITCH)), sound);
+    // pulling past the first / last product: one rigid bump as the rubber band starts
+    const past = x > 0.5 || x < X_MIN - 0.5;
+    if (past !== pastEdge) { pastEdge = past; if (past && sound) Haptics.edge(); }
+    select(slot, sound);
     waveKick();
   }
 
@@ -1213,7 +1247,7 @@ const Haptics = (() => {
       anims.push(pillCheck.animate(Array.from({ length: CN + 1 }, (_, k) => ({ offset: k / CN, scale: String(k === CN ? 1 : Math.max(0, 1 + cf.d((k / CN) * cd)).toFixed(4)) })),
         { duration: cd * 1000, delay: DONE.CHECK_AT, fill: 'both' }));
     }
-    Sfx.unlock(); Sfx.snap(); Haptics.tap();
+    Sfx.unlock(); Sfx.snap(); Haptics.success();
     Promise.all(anims.map((a) => a.finished)).then(() => {
       pill.classList.add('is-done'); pill.setAttribute('aria-label', 'You are on the list for iPhone Duo');
       pillClear(); pill.style.scale = ''; notifying = false;
