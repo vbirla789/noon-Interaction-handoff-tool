@@ -42,6 +42,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 .top__title small { position: relative; margin-left: 12px; padding-left: 13px; color: var(--ink-2); font-size: 13px; font-weight: 400; letter-spacing: 0; }
 .top__title small::before { content: ''; position: absolute; left: 0; top: 50%; width: 1px; height: 14px; margin-top: -7px; background: var(--line-2); }
 .top__sp { flex: 1; }
+.iters[hidden] { display: none; }
 .iters { display: flex; gap: 2px; padding: 2px; background: var(--fill); border-radius: 10px; flex: none; }
 .iters button { min-width: 38px; height: 28px; padding: 0 10px; border-radius: var(--r-ctl); font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--ink-2); transition: background-color .15s, color .15s; }
 .iters button:hover { color: var(--ink); }
@@ -114,9 +115,9 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 .insp__go:hover { background: var(--accent-600); }
 
 .stage { position: absolute; left: 50%; top: var(--gut); bottom: var(--gut); transform: translateX(-50%); display: grid; place-items: start center; }
-.phone { position: relative; width: 375px; height: 812px; transform-origin: 0 0; background: #fff; overflow: hidden;
+.phone { position: relative; width: var(--pw, 375px); height: var(--ph, 812px); transform-origin: 0 0; background: #fff; overflow: hidden;
   box-shadow: 0 0 0 1px rgba(17, 17, 28, .08), 0 2px 6px rgba(17, 17, 28, .06), 0 24px 48px -20px rgba(17, 17, 28, .28); }
-.phone iframe { position: absolute; left: 0; top: 0; width: 375px; height: 812px; border: 0; opacity: 0; pointer-events: none; }
+.phone iframe { position: absolute; left: 0; top: 0; width: var(--pw, 375px); height: var(--ph, 812px); border: 0; opacity: 0; pointer-events: none; }
 .phone iframe.is-front { opacity: 1; pointer-events: auto; }
 .phone__veil { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(255, 255, 255, .92); font-size: 22px; font-weight: 500; color: var(--ink-2); transition: opacity .25s; text-align: center; padding: 40px; }
 .phone__veil[hidden] { display: grid; opacity: 0; pointer-events: none; }
@@ -219,7 +220,6 @@ body.is-scrubbing, body.is-scrubbing * { cursor: grabbing !important; user-selec
   <div class="top__title" id="title">Full Flow — Animation Spec</div>
   <div class="top__sp"></div>
   <div class="iters" id="iters" role="group" aria-label="Iteration">
-    <button data-v="1">01</button><button data-v="2">02</button><button data-v="3">03</button>
   </div>
   <button class="copy" id="copy">Copy link</button>
 </header>
@@ -238,7 +238,7 @@ body.is-scrubbing, body.is-scrubbing * { cursor: grabbing !important; user-selec
       <div class="phone__veil" id="veil">Loading the prototype…</div>
     </div>
   </div>
-  <div class="card device"><h3>Device</h3><p>Custom (375x812 @3x)</p></div>
+  <div class="card device"><h3>Device</h3><p id="deviceLabel">Custom (375x812 @3x)</p></div>
   <aside class="card insp" id="insp" aria-live="polite"></aside>
   <div class="ctrl">
     <button id="play" aria-label="Play"><svg id="playIco" width="16" height="18" viewBox="0 0 16 18"><path d="M1 1.5v15L15 9z" fill="#1d1d1f"/></svg></button>
@@ -261,15 +261,52 @@ body.is-scrubbing, body.is-scrubbing * { cursor: grabbing !important; user-selec
     <span class="legend"><i style="background:var(--delay)"></i>delay</span>
     <span class="legend"><i style="background:var(--dur)"></i>duration</span>
     <span class="legend"><i style="background:linear-gradient(180deg,#3e424d 0 30%,transparent 30% 40%,#3e424d 40% 70%,transparent 70% 80%,#3e424d 80%)"></i>staggered (one step per element)</span>
-    <span class="legend"><i class="bar--approx" style="position:static"></i>timing depends on the ruler wave (≈)</span>
+    <span class="legend"><i class="bar--approx" style="position:static"></i><span id="legendApprox">timing varies at runtime (≈)</span></span>
     <span class="legend"><i class="bar--repeat" style="position:static"></i>repeats</span>
     <span class="legend"><i style="width:2px;height:12px;background:var(--dur);border-radius:1px"></i>sound / haptic pulse</span>
   </p>
 </div>
 
 <script>
-(() => {
-  /* ═══ Motion model — the same formulas and constants as app.js ═══════════ */
+/* ═══ SpecKit — generic helpers shared by every spec sheet (do not edit per project) ═══
+   Row helpers: S(spring key, {x0, v0}) · C(curve key) · H(haptic kind, layer, selector, ms | [ms…], note)
+   Maths: springFn(ω, ζ, x0, v0) → { d(t), v(t) } (t in s) · firstT(f, test) → first ms where test(d, v)
+   Layout: rowEnd(row) / sceneEnd(rows) in ms.                                                     */
+window.SpecKit = (() => {
+  const springFn = (w, z, x0, v0 = 0) => { const wd = w * Math.sqrt(1 - z * z), a = z * w;
+    return { d: (t) => Math.exp(-a * t) * (x0 * Math.cos(wd * t) + ((v0 + a * x0) / wd) * Math.sin(wd * t)),
+             v: (t) => Math.exp(-a * t) * (v0 * Math.cos(wd * t) - ((a * v0 + w * w * x0) / wd) * Math.sin(wd * t)) }; };
+  const firstT = (f, test, max = 4) => { for (let t = 0; t < max; t += 0.001) if (test(f.d(t), f.v(t))) return t * 1000; return max * 1000; };
+  const S = (k, extra = {}) => ({ kind: 'spring', k, ...extra });
+  const C = (k) => ({ kind: 'curve', k });
+  // haptics (app.js Haptics): iOS generator + style, Android vibrate, iOS-Safari fallback
+  const HAP = {
+    tap:     { name: 'tap',     gen: 'UIImpactFeedbackGenerator', style: 'light', vibe: '8ms', call: 'Haptics.tap()' },
+    tick:    { name: 'tick',    gen: 'UISelectionFeedbackGenerator', style: 'selection', vibe: '4ms', call: 'Haptics.tick()' },
+    snap:    { name: 'snap',    gen: 'UIImpactFeedbackGenerator', style: 'medium', intensity: 0.8, vibe: '12ms', call: 'Haptics.snap()' },
+    edge:    { name: 'edge',    gen: 'UIImpactFeedbackGenerator', style: 'rigid', intensity: 0.6, vibe: '10ms', call: 'Haptics.edge()' },
+    success: { name: 'success', gen: 'UINotificationFeedbackGenerator', style: 'success', vibe: '[10, 40, 16]', call: 'Haptics.success()' },
+  };
+  const H = (k, layer, sel, at, note, extra = {}) => ({ icon: 'haptic', prop: 'Haptic', layer, sel, delay: Array.isArray(at) ? (at[0] || 0) : at, dur: 10, from: '—', to: '—',
+    ease: { kind: 'haptic', ...HAP[k] }, marks: Array.isArray(at) ? at : [at], note, ...extra });
+  const rowEnd = (r) => r.delay + (r.stagger ? (r.stagger.n - 1) * r.stagger.step : 0) + (r.marks ? Math.max(...r.marks) - r.delay : 0) + r.dur;
+  const sceneEnd = (rows) => Math.max(...rows.filter((r) => !r.grp && !r.repeat).map(rowEnd));
+  // a PP-style sampled spring's length for a travel of |d| (settles to 0.02 of a unit)
+  const sampleLen = (spr, d) => 1000 * Math.max(0.2, Math.log(Math.max(Math.abs(d), 0.02) / 0.02) / (spr.z * spr.w) + 0.05);
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));   // real time (for history / tasks to land)
+  return { springFn, firstT, S, C, H, HAP, rowEnd, sceneEnd, sampleLen, wait };
+})();
+</script>
+
+<script id="spec-config">
+/* ═══ PROJECT CONFIG — everything specific to this prototype lives here ═══════════
+   The engine below never changes between projects: it reads window.SPEC only.
+   title · device {w, h, label} · paths {iteration: url} · iterations {iteration: label}
+   springs {key: {name, w, z, src}} · curves {key: {name, fn: 'linear(…)'}}
+   scenes [{id, name, trig, summary?, varies?, overview?, rows(v) → rows}] · overview(v) → {rows, beats}
+   states {name: async (doc, win, eng) => …} · prep {sceneId: stateName|null} · fire {sceneId: (doc, win) => …} */
+window.SPEC = (() => {
+  const { springFn, firstT, S, C, H, rowEnd, sceneEnd, wait: realWait } = SpecKit;
   const PATHS = { 1: '/', 2: '/v2/', 3: '/v3/' };
   const SPR = {
     pp:    { name: 'Handoff spring', w: 16.75, z: 0.81, src: 'PP — ProtoPie handoff r/8e30fe8e' },
@@ -288,12 +325,8 @@ body.is-scrubbing, body.is-scrubbing * { cursor: grabbing !important; user-selec
     title:  { name: 'Heading fade (recorded)', fn: 'linear(0, 0.12 11.5%, 0.25 22.4%, 0.4 33.6%, 0.55 44.4%, 0.69 55.3%, 0.81 66.4%, 0.91 77.2%, 0.97 88.2%, 1)' },
     lin:    { name: 'Linear', fn: 'linear(0, 1)' },
   };
-  const springFn = (w, z, x0, v0 = 0) => { const wd = w * Math.sqrt(1 - z * z), a = z * w;
-    return { d: (t) => Math.exp(-a * t) * (x0 * Math.cos(wd * t) + ((v0 + a * x0) / wd) * Math.sin(wd * t)),
-             v: (t) => Math.exp(-a * t) * (v0 * Math.cos(wd * t) - ((a * v0 + w * w * x0) / wd) * Math.sin(wd * t)) }; };
   const ppLen = (d) => 1000 * Math.max(0.2, Math.log(Math.max(Math.abs(d), 0.02) / 0.02) / (SPR.pp.z * SPR.pp.w) + 0.05);   // PP.spring sample length
   const titleLen = 1000 * Math.log(14 / 0.02) / (SPR.title.z * SPR.title.w);
-  const firstT = (f, test, max = 4) => { for (let t = 0; t < max; t += 0.001) if (test(f.d(t), f.v(t))) return t * 1000; return max * 1000; };
   // page push: progress spring released from rest; settles when |x| < 0.0004 and |v| < 0.02
   const pushLen = firstT(springFn(SPR.pp.w, SPR.pp.z, -1, 0), (d, v) => Math.abs(d) < 0.0004 && Math.abs(v) < 0.02);
   // FTUX glide: −288px → 0
@@ -321,18 +354,6 @@ body.is-scrubbing, body.is-scrubbing * { cursor: grabbing !important; user-selec
     return { sel, land, snapAt, ticks, waveEnd, hTicks, hSnap: hSnap ?? snapAt };
   })();
 
-  const S = (k, extra = {}) => ({ kind: 'spring', k, ...extra });
-  // haptics (app.js Haptics): iOS generator + style, Android vibrate, iOS-Safari fallback
-  const HAP = {
-    tap:     { name: 'tap',     gen: 'UIImpactFeedbackGenerator', style: 'light', vibe: '8ms', call: 'Haptics.tap()' },
-    tick:    { name: 'tick',    gen: 'UISelectionFeedbackGenerator', style: 'selection', vibe: '4ms', call: 'Haptics.tick()' },
-    snap:    { name: 'snap',    gen: 'UIImpactFeedbackGenerator', style: 'medium', intensity: 0.8, vibe: '12ms', call: 'Haptics.snap()' },
-    edge:    { name: 'edge',    gen: 'UIImpactFeedbackGenerator', style: 'rigid', intensity: 0.6, vibe: '10ms', call: 'Haptics.edge()' },
-    success: { name: 'success', gen: 'UINotificationFeedbackGenerator', style: 'success', vibe: '[10, 40, 16]', call: 'Haptics.success()' },
-  };
-  const H = (k, layer, sel, at, note, extra = {}) => ({ icon: 'haptic', prop: 'Haptic', layer, sel, delay: Array.isArray(at) ? (at[0] || 0) : at, dur: 10, from: '—', to: '—',
-    ease: { kind: 'haptic', ...HAP[k] }, marks: Array.isArray(at) ? at : [at], note, ...extra });
-  const C = (k) => ({ kind: 'curve', k });
 
   /* ═══ scenes ═════════════════════════════════════════════════════════════ */
   function revealRows(v) {
@@ -386,7 +407,7 @@ body.is-scrubbing, body.is-scrubbing * { cursor: grabbing !important; user-selec
     { icon: 'opacity', prop: 'Opacity', layer: 'Card Skeletons', sel: '.pslot > .skel', delay: at + 353, dur: 189, from: '1', to: '0', ease: C('io'), stagger: { n: 8, step: 60, order: 'grid order' }, note: 'Each card’s skeleton fades out 353ms after its card starts.' },
   ];
   const SCENES = [
-    { id: 0, name: 'Overview', trig: 'the full journey, played end to end', overview: true },
+    { id: 0, name: 'Overview', trig: 'the full journey, played end to end', summary: 'Home → Search → Results → widget → Notify → slide → back', overview: true },
     { id: 1, name: 'Search push', trig: 'Tap the search bar', rows: () => [
       H('tap', 'Search Bar', '#searchEntry', 0, 'A light tap the moment the search bar is pressed.'),
       { icon: 'move', prop: 'Move X', layer: 'Search Page', sel: '#search', delay: 0, dur: pushLen, from: '375px', to: '0px', ease: S('pp', { x0: -1 }), driver: 'frame',
@@ -423,15 +444,20 @@ body.is-scrubbing, body.is-scrubbing * { cursor: grabbing !important; user-selec
     { id: 5, name: 'Slide to next product', trig: 'Tap the next product / → key (from rest)', rows: () => [
       { icon: 'move', prop: 'Move X', layer: 'Slider Rail', sel: '#rosterRail', delay: 0, dur: slide.land, from: '0px', to: '−144px', ease: S('snap', { x0: 144 }), driver: 'frame',
         note: 'Snaps one product (144px pitch) on a soft spring. A swipe carries the finger’s velocity, capped so a hard flick glides in: toward the slot ≤ 1.2·ω·distance, away ≤ 600px/s. Bounded to 10 products with a rubber band past either end.' },
-      { icon: 'scale', prop: 'Scale', layer: 'Products', sel: '.rp', delay: 0, dur: slide.land, from: '100%', to: '90%', ease: { kind: 'bound' },
+      { icon: 'scale', prop: 'Scale', layer: 'Products', sel: '.rp', delay: 0, dur: slide.land, from: '100%', to: '90%', ease: { kind: 'custom', label: 'Bound to rail', tag: 'smoothstep', info: [['Unselected', '90%'], ['Origin', 'top of the name row']],
+          code: 'scale = 1 − 0.1 · smoothstep(min(1, |slot − x| / 144))',
+          plot: { span: slide.land / 1000, f: (() => { const f = springFn(SPR.snap.w, SPR.snap.z, 144, 0); return (t) => { const u = Math.min(1, (144 - f.d(t)) / 144); return u * u * (3 - 2 * u); }; })() } },
         note: 'Bound to the rail position: unselected products sit at 90%; scale = 1 − 0.1·smoothstep(|offset| / 144), so it rests near the slot and near the others.' },
       { icon: 'scale', prop: 'Scale', layer: 'Selection Circle', sel: '.roster__sel', delay: 0, dur: 240, from: '100%', to: '94%', ease: C('io') },
       { icon: 'scale', prop: 'Scale', layer: 'Selected Dot', sel: '.roster__dot', delay: 0, dur: 160, from: '100%', to: '0%', ease: C('io') },
-      { icon: 'scale', prop: 'Scale Y · Tint', layer: 'Ruler Wave', sel: '.roster__ruler', delay: 0, dur: slide.waveEnd, from: '×1', to: '×1.43', ease: { kind: 'wave' },
+      { icon: 'scale', prop: 'Scale Y · Tint', layer: 'Ruler Wave', sel: '.roster__ruler', delay: 0, dur: slide.waveEnd, from: '×1', to: '×1.43', ease: { kind: 'custom', label: 'Envelope', tag: 'Ruler wave',
+          info: [['Peak', '×1.43 · σ 17.5px'], ['Attack', '20ms'], ['Hold', '50ms after &lt; 20px/s'], ['Decay', '100ms · (1 − u)^1.6'], ['Tint', 'max 0.92 · σ 12px (+14 trailing)']],
+          code: 'WAVE { A: 0.43, SIGMA: 17.5, ATTACK: 0.02, HOLD: 50, DECAY: 100, V_MIN: 20 } · TINT { MAX: 0.92, SIGMA: 12, TRAIL: 14, LEAD: 3 }',
+          plot: { span: slide.waveEnd / 1000, f: (() => { const stop = (slide.waveEnd - 150) / 1000; return (t) => (t < stop + 0.05 ? 1 - Math.exp(-t / 0.02) : (1 - Math.min(1, (t - stop - 0.05) / 0.1)) ** 1.6); })() } },
         note: 'While the rail moves, each tick grows by a bell curve of its distance from the red line (×1.43 beside it, σ 17.5px) and takes on the line’s colour, smeared toward the side it travels to; the red line reaches up by the same amount.' },
-      { icon: 'sound', prop: 'Sound', layer: 'Ruler Ticks', sel: '.roster__ruler', delay: slide.ticks[0] || 0, dur: 14, from: '—', to: '—', ease: { kind: 'sound', f: 2900, q: 4, ms: 14 }, marks: slide.ticks,
+      { icon: 'sound', prop: 'Sound', layer: 'Ruler Ticks', sel: '.roster__ruler', delay: slide.ticks[0] || 0, dur: 14, from: '—', to: '—', ease: { kind: 'sound', f: 2900, q: 4, ms: 14, code: 'Sfx.tick() — click(2900, 4, 14, 0.07)' }, marks: slide.ticks,
         note: 'A crisp click each time a ruler tick crosses the line, never closer than 100ms.' },
-      { icon: 'sound', prop: 'Sound', layer: 'Snap', sel: '.rp.is-sel', delay: slide.snapAt, dur: 22, from: '—', to: '—', ease: { kind: 'sound', f: 2400, q: 3, ms: 22, body: true }, marks: [slide.snapAt],
+      { icon: 'sound', prop: 'Sound', layer: 'Snap', sel: '.rp.is-sel', delay: slide.snapAt, dur: 22, from: '—', to: '—', ease: { kind: 'sound', f: 2400, q: 3, ms: 22, body: true, code: 'Sfx.snap() — click(2400, 3, 22, 0.12, 0.05)' }, marks: [slide.snapAt],
         note: 'A fuller click (with a short sine “tock”) the moment the new product takes the slot (halfway, 72px).' },
       H('tick', 'Ruler Ticks', '.roster__ruler', slide.hTicks, 'A selection tick each time a ruler tick crosses the red line while the rail is dragged or coasting — the picker-wheel feel — at least 40ms apart. None in the frame a product lands (that one is the snap) and none past either end. Pulling past the first or last product plays one rigid bump instead (rigid @0.6).'),
       H('snap', 'Snap', '.rp.is-sel', slide.hSnap, 'A firmer tap as the new product takes the slot. Inside 40ms of a tick it waits just past the gap, so the two never blur into one bump.'),
@@ -447,12 +473,14 @@ body.is-scrubbing, body.is-scrubbing * { cursor: grabbing !important; user-selec
     { id: 6, name: 'Notify me', trig: 'Tap “Notify me”', rows: () => [
       { icon: 'size', prop: 'Size · Position', layer: 'Notify Pill', sel: '.rp__notify', delay: 0, dur: 620, from: '97×30 @ 4', to: '133×30 @ −15', ease: S('morph'),
         note: 'The box morphs into the 133×30 “You are on the list” pill centred under the Duo (left 4 → −15px).' },
-      { icon: 'scale', prop: 'Scale', layer: 'Notify Pill (press)', sel: '.rp__notify', delay: 0, dur: 600, from: '100% → 95%', to: '100%', ease: { kind: 'press' },
+      { icon: 'scale', prop: 'Scale', layer: 'Notify Pill (press)', sel: '.rp__notify', delay: 0, dur: 600, from: '100% → 95%', to: '100%', ease: { kind: 'custom', label: 'Press + spring', tag: 'Pop spring', info: [['Dip', '100% → 95% · 70ms'], ['Release', 'ω 15 · ζ 0.7']],
+          code: 'dip 70ms linear, then 1 + springFn(15, 0.7, −0.05) — total 600ms',
+          plot: { span: 0.6, f: (() => { const sp = springFn(15, 0.7, -0.05, 0); return (t) => (t < 0.07 ? 1 - (0.05 * t) / 0.07 : 1 + sp.d(t - 0.07)); })() } },
         note: 'Dips to 95% under the finger in 70ms, then the pop spring (ω 15, ζ 0.7) carries it back to full size.' },
       { icon: 'opacity', prop: 'Opacity · Blur', layer: '“Notify me” + Bell', sel: '.rp__cta, .rp__notify > img', delay: 0, dur: 140, from: '1 · 0px', to: '0 · 2px', ease: C('io') },
       { icon: 'opacity', prop: 'Opacity · Blur', layer: '“You are on the list”', sel: '.rp__done', delay: 110, dur: 260, from: '0 · 3px', to: '1 · 0px', ease: C('out'), note: 'Uncovered from the centre by the widening box and fades up out of a slight blur. Text #F7306F, Noontree Regular 12px.' },
       { icon: 'scale', prop: 'Scale', layer: 'Check Circle', sel: '.rp__done img', delay: 210, dur: 600, from: '35%', to: '100%', ease: S('check', { x0: -0.65 }), note: 'Pops in last.' },
-      { icon: 'sound', prop: 'Sound', layer: 'Tap', sel: '.rp__notify', delay: 0, dur: 22, from: '—', to: '—', ease: { kind: 'sound', f: 2400, q: 3, ms: 22, body: true }, marks: [0], note: 'The snap click.' },
+      { icon: 'sound', prop: 'Sound', layer: 'Tap', sel: '.rp__notify', delay: 0, dur: 22, from: '—', to: '—', ease: { kind: 'sound', f: 2400, q: 3, ms: 22, body: true, code: 'Sfx.snap() — click(2400, 3, 22, 0.12, 0.05)' }, marks: [0], note: 'The snap click.' },
       H('success', 'Notify', '.rp__notify', 0, 'The iOS success notification as the pill becomes “You are on the list” (it skips the generic light tap).'),
     ] },
     { id: 7, name: 'Back to suggestions', trig: 'Tap back on the results page', rows: () => [
@@ -485,10 +513,44 @@ body.is-scrubbing, body.is-scrubbing * { cursor: grabbing !important; user-selec
     ];
     return { rows, beats };
   }
-  const rowEnd = (r) => r.delay + (r.stagger ? (r.stagger.n - 1) * r.stagger.step : 0) + (r.marks ? Math.max(...r.marks) - r.delay : 0) + r.dur;
-  const sceneEnd = (rows) => Math.max(...rows.filter((r) => !r.grp && !r.repeat).map(rowEnd));
   const ITER = { 1: 'Iteration 01 · parallax push', 2: 'Iteration 02 · card rises', 3: 'Iteration 03 · card drops in' };
 
+  // states, fast-forwarded on the virtual clock from a fresh load
+  const ST = {
+    async search(d, w, e) { d.getElementById('searchEntry').click(); await e.stepUntil(() => d.getElementById('home').inert && !d.querySelector('.srch__art').getAnimations().length); },
+    async suggest(d, w, e) { await ST.search(d, w, e); const i = d.getElementById('searchInput'); i.value = 'iphone'; i.dispatchEvent(new w.Event('input', { bubbles: true }));
+      await e.stepUntil(() => [...d.querySelectorAll('.sug')].every((r) => r.style.opacity === '1')); },
+    async results(d, w, e) { await ST.suggest(d, w, e); d.querySelector('.sug').click(); await realWait(20);
+      await e.stepUntil(() => { const p = d.querySelector('.rp__notify'); return d.getElementById('roster').style.height === '286px' && p.style.opacity === '' && !p.getAnimations().length && !d.querySelector('.roster__dot').getAnimations().length && !d.querySelector('.roster__sel').getAnimations().length; }, 15000);
+      await e.advanceTo(e.vt + 200, 48); },
+  };
+  const PREP = { 1: null, 2: 'search', 3: 'suggest', 4: 'results', 5: 'results', 6: 'results', 7: 'results', 8: 'suggest' };
+  const FIRE = {
+    1: (d) => d.getElementById('searchEntry').click(),
+    2: (d, w) => { const i = d.getElementById('searchInput'); i.value = 'iphone'; i.dispatchEvent(new w.Event('input', { bubbles: true })); },
+    3: (d) => d.querySelector('.sug').click(),
+    4: async (d) => { const plp = d.getElementById('plp'), s = d.getElementById('plpScroll'); if (s) s.scrollTop = 0; plp.classList.remove('is-open'); await Promise.resolve(); plp.classList.add('is-open'); },
+    5: (d, w) => d.getElementById('rosterRail').dispatchEvent(new w.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })),
+    6: (d) => d.querySelector('.rp__notify').click(),
+    7: (d) => d.getElementById('searchBack').click(),
+    8: (d) => d.getElementById('searchBack').click(),
+  };
+
+
+  return {
+    title: 'Full Flow — Animation Spec', device: { w: 375, h: 812, label: 'Custom (375x812 @3x)' },
+    legend: { approx: 'timing depends on the ruler wave (≈)' },
+    paths: PATHS, iterations: ITER, springs: SPR, curves: CURVE, scenes: SCENES, overview, states: ST, prep: PREP, fire: FIRE,
+  };
+})();
+</script>
+
+<script>
+/* ═══ SPEC SHEET ENGINE — identical in every project (copy as-is; configure via window.SPEC) ═══ */
+(() => {
+  const { paths: PATHS, iterations: ITER, springs: SPR, curves: CURVE, scenes: SCENES, overview, states: ST, prep: PREP, fire: FIRE } = window.SPEC;
+  const { springFn, rowEnd, sceneEnd } = window.SpecKit;
+  const DW = (window.SPEC.device || {}).w || 375, DH = (window.SPEC.device || {}).h || 812;
   /* ═══ helpers ═══════════════════════════════════════════════════════════ */
   const $ = (id) => document.getElementById(id);
   const fmtS = (ms) => `${(+(ms / 1000).toFixed(2))}s`;
@@ -530,7 +592,7 @@ body.is-scrubbing, body.is-scrubbing * { cursor: grabbing !important; user-selec
       const len = s.overview ? sceneEnd(overview(v).rows) : sceneEnd(s.rows(v));
       return `<li><button data-s="${s.id}" aria-pressed="${s.id === sc}"><span class="n">${String(s.id).padStart(2, '0')}</span>
         <span class="nm">${s.name}${s.varies ? '<span class="tag tag--warm">varies</span>' : ''}</span><span class="len">${fmtS(len)}</span>
-        <span class="tr">${s.overview ? 'Home → Search → Results → widget → Notify → slide → back' : s.trig}</span></button></li>`;
+        <span class="tr">${s.summary || s.trig}</span></button></li>`;
     }).join('');
   }
   const pct = (ms) => `${(ms / END) * 100}%`;
@@ -577,7 +639,7 @@ body.is-scrubbing, body.is-scrubbing * { cursor: grabbing !important; user-selec
       layers.map(([l, q]) => `<button data-l="${l}" aria-pressed="${layerFilter === l}">${l} <code>${q}</code></button>`).join('');
     applyFilter();
     select(rows.findIndex((r) => !r.grp && (!layerFilter || r.layer === layerFilter)));
-    $('title').innerHTML = `Full Flow — Animation Spec <small>${String(sc).padStart(2, '0')} ${S0.name} · ${ITER[v]}</small>`;
+    $('title').innerHTML = `${window.SPEC.title} <small>${String(sc).padStart(2, '0')} ${S0.name} · ${ITER[v]}</small>`;
     document.querySelectorAll('#iters button').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.v === v)));
     $('back').href = PATHS[v];
     setHead(END); renderFlow();
@@ -593,9 +655,7 @@ body.is-scrubbing, body.is-scrubbing * { cursor: grabbing !important; user-selec
     const e = r.ease;
     if (e.kind === 'spring') return { f: springProgress(e), span: r.dur / 1000 };
     if (e.kind === 'curve') return { f: (t) => linearAt(CURVE[e.k].fn, t), span: 1 };
-    if (e.kind === 'press') { const sp = springFn(15, 0.7, -0.05, 0); return { f: (t) => (t < 0.07 ? 1 - (0.05 * t) / 0.07 : 1 + sp.d(t - 0.07)), span: 0.6 }; }
-    if (e.kind === 'wave') { const stop = (slide.waveEnd - 150) / 1000; return { f: (t) => (t < stop + 0.05 ? 1 - Math.exp(-t / 0.02) : (1 - Math.min(1, (t - stop - 0.05) / 0.1)) ** 1.6), span: slide.waveEnd / 1000 }; }
-    if (e.kind === 'bound') { const f = springFn(SPR.snap.w, SPR.snap.z, 144, 0); return { f: (t) => { const u = Math.min(1, (144 - f.d(t)) / 144), s = u * u * (3 - 2 * u); return s; }, span: r.dur / 1000 }; }
+    if (e.kind === 'custom' && e.plot) return { f: e.plot.f, span: e.plot.span };
     return null;
   }
   function plot(r) {
@@ -637,15 +697,9 @@ body.is-scrubbing, body.is-scrubbing * { cursor: grabbing !important; user-selec
       code = `stiffness ${(s.w * s.w).toFixed(2)} · damping ${(2 * s.z * s.w).toFixed(2)} · mass 1 — ${s.src}`;
     } else if (e.kind === 'curve') {
       ease = `<dt>Easing</dt><dd>Curve<span class="tag">${CURVE[e.k].name}</span></dd>`; code = CURVE[e.k].fn;
-    } else if (e.kind === 'press') {
-      ease = `<dt>Easing</dt><dd>Press + spring<span class="tag">Pop spring</span></dd><dt>Dip</dt><dd>100% → 95% · 70ms</dd><dt>Release</dt><dd>ω 15 · ζ 0.7</dd>`;
-      code = 'dip 70ms linear, then 1 + springFn(15, 0.7, −0.05) — total 600ms';
-    } else if (e.kind === 'wave') {
-      ease = `<dt>Easing</dt><dd>Envelope<span class="tag">Ruler wave</span></dd><dt>Peak</dt><dd>×1.43 · σ 17.5px</dd><dt>Attack</dt><dd>20ms</dd><dt>Hold</dt><dd>50ms after &lt; 20px/s</dd><dt>Decay</dt><dd>100ms · (1 − u)^1.6</dd><dt>Tint</dt><dd>max 0.92 · σ 12px (+14 trailing)</dd>`;
-      code = 'WAVE { A: 0.43, SIGMA: 17.5, ATTACK: 0.02, HOLD: 50, DECAY: 100, V_MIN: 20 } · TINT { MAX: 0.92, SIGMA: 12, TRAIL: 14, LEAD: 3 }';
-    } else if (e.kind === 'bound') {
-      ease = `<dt>Easing</dt><dd>Bound to rail<span class="tag">smoothstep</span></dd><dt>Unselected</dt><dd>90%</dd><dt>Origin</dt><dd>top of the name row</dd>`;
-      code = 'scale = 1 − 0.1 · smoothstep(min(1, |slot − x| / 144))';
+    } else if (e.kind === 'custom') {
+      ease = `<dt>Easing</dt><dd>${e.label}<span class="tag">${e.tag}</span></dd>` + (e.info || []).map(([k, val]) => `<dt>${k}</dt><dd>${val}</dd>`).join('');
+      code = e.code || '';
     } else if (e.kind === 'haptic') {
       ease = `<dt>Type</dt><dd>Haptic<span class="tag">${e.style}${e.intensity ? ` @${e.intensity}` : ''}</span></dd><dt>iOS</dt><dd>${e.gen}</dd>
         <dt>Android</dt><dd>vibrate(${e.vibe})</dd><dt>iOS Safari</dt><dd>native switch toggle${e.name === 'success' ? ' ×2' : ''}</dd>
@@ -653,7 +707,7 @@ body.is-scrubbing, body.is-scrubbing * { cursor: grabbing !important; user-selec
       code = `${e.call} → webkit.messageHandlers.haptic.postMessage(${JSON.stringify(e.intensity ? { type: e.style, intensity: e.intensity } : e.style)})`;
     } else if (e.kind === 'sound') {
       ease = `<dt>Type</dt><dd>Synthesised click<span class="tag">Web Audio</span></dd><dt>Band-pass</dt><dd>${e.f} Hz · Q ${e.q}</dd><dt>Length</dt><dd>${e.ms}ms noise burst</dd>${e.body ? '<dt>Body</dt><dd>sine tock 0.62→0.45 × f, 35ms</dd>' : ''}${r.marks.length > 1 ? `<dt>Clicks</dt><dd>${r.marks.map((m) => Math.round(m)).join(', ')} ms</dd>` : ''}`;
-      code = e.body ? 'Sfx.snap() — click(2400, 3, 22, 0.12, 0.05)' : 'Sfx.tick() — click(2900, 4, 14, 0.07)';
+      code = e.code || '';
     }
     $('insp').innerHTML = `<h3>${r.prop} <span style="font-weight:400;color:var(--ink-2)">— ${r.layer}</span></h3>
       <p class="insp__sub"><code>${r.sel}</code></p>
@@ -744,27 +798,6 @@ body.is-scrubbing, body.is-scrubbing * { cursor: grabbing !important; user-selec
     async function stepUntil(cond, max = 12000) { const lim = vt + max; while (!cond()) { if (vt >= lim) throw new Error('timeout'); await advanceTo(vt + 96 * 3, 96); } }
     return { now, advanceTo, stepUntil, get vt() { return vt; } };
   }
-  // states, fast-forwarded on the virtual clock from a fresh load
-  const ST = {
-    async search(d, w, e) { d.getElementById('searchEntry').click(); await e.stepUntil(() => d.getElementById('home').inert && !d.querySelector('.srch__art').getAnimations().length); },
-    async suggest(d, w, e) { await ST.search(d, w, e); const i = d.getElementById('searchInput'); i.value = 'iphone'; i.dispatchEvent(new w.Event('input', { bubbles: true }));
-      await e.stepUntil(() => [...d.querySelectorAll('.sug')].every((r) => r.style.opacity === '1')); },
-    async results(d, w, e) { await ST.suggest(d, w, e); d.querySelector('.sug').click(); await realWait(20);
-      await e.stepUntil(() => { const p = d.querySelector('.rp__notify'); return d.getElementById('roster').style.height === '286px' && p.style.opacity === '' && !p.getAnimations().length && !d.querySelector('.roster__dot').getAnimations().length && !d.querySelector('.roster__sel').getAnimations().length; }, 15000);
-      await e.advanceTo(e.vt + 200, 48); },
-  };
-  const PREP = { 1: null, 2: 'search', 3: 'suggest', 4: 'results', 5: 'results', 6: 'results', 7: 'results', 8: 'suggest' };
-  const FIRE = {
-    1: (d) => d.getElementById('searchEntry').click(),
-    2: (d, w) => { const i = d.getElementById('searchInput'); i.value = 'iphone'; i.dispatchEvent(new w.Event('input', { bubbles: true })); },
-    3: (d) => d.querySelector('.sug').click(),
-    4: async (d) => { const plp = d.getElementById('plp'), s = d.getElementById('plpScroll'); if (s) s.scrollTop = 0; plp.classList.remove('is-open'); await Promise.resolve(); plp.classList.add('is-open'); },
-    5: (d, w) => d.getElementById('rosterRail').dispatchEvent(new w.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })),
-    6: (d) => d.querySelector('.rp__notify').click(),
-    7: (d) => d.getElementById('searchBack').click(),
-    8: (d) => d.getElementById('searchBack').click(),
-  };
-
   /* ═══ record once, scrub instantly ══════════════════════════════════════════
      A hidden RECORDER frame (the real prototype on the virtual clock above) plays
      the scene once, frame by frame (120fps, 60fps for the long overview). Every
@@ -1009,9 +1042,9 @@ body.is-scrubbing, body.is-scrubbing * { cursor: grabbing !important; user-selec
       playT = Math.max(0, Math.min(END, playT + (e.key === 'ArrowRight' ? step : -step))); paint(); } });
 
   function fit() {
-    const st = $('stage'), h = st.clientHeight || 520, s = Math.min(1, h / 812);
+    const st = $('stage'), h = st.clientHeight || 520, s = Math.min(1, h / DH);
     $('phone').style.transform = `scale(${s})`;
-    st.style.width = `${375 * s}px`; $('phone').style.marginBottom = `${-812 * (1 - s)}px`;
+    st.style.width = `${DW * s}px`; $('phone').style.marginBottom = `${-DH * (1 - s)}px`;
   }
   addEventListener('resize', fit);
 
@@ -1041,6 +1074,13 @@ body.is-scrubbing, body.is-scrubbing * { cursor: grabbing !important; user-selec
   $('copy').addEventListener('click', async () => { try { await navigator.clipboard.writeText(location.href); $('copy').textContent = 'Copied'; } catch (_) { $('copy').textContent = 'Copy failed'; } setTimeout(() => ($('copy').textContent = 'Copy link'), 1400); });
   addEventListener('keydown', (e) => { if (e.key === ' ' && e.target === document.body) { e.preventDefault(); togglePlay(); } });
 
+  document.title = window.SPEC.title.replace(/ — .*/, '') + ' Spec';
+  document.documentElement.style.setProperty('--pw', `${DW}px`); document.documentElement.style.setProperty('--ph', `${DH}px`);
+  if (window.SPEC.device && window.SPEC.device.label) $('deviceLabel').textContent = window.SPEC.device.label;
+  if (window.SPEC.legend && window.SPEC.legend.approx) $('legendApprox').textContent = window.SPEC.legend.approx;
+  // iteration tabs come from SPEC.paths (hidden when there is only one)
+  $('iters').innerHTML = Object.keys(PATHS).map((k) => `<button data-v="${k}">${String(k).padStart(2, '0')}</button>`).join('');
+  $('iters').hidden = Object.keys(PATHS).length < 2;
   renderTimeline(); fit(); rebuild();
 })();
 </script>
