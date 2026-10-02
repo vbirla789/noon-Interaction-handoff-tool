@@ -1347,14 +1347,14 @@ const Haptics = (() => {
 })();
 
 /* ══ Variant switcher (prototype tool) ═════════════════════════════════════
-   1–4 beside the phone. Each option is its OWN copy of the flow, so they can
-   be iterated independently: 1 = / (this folder), 2 = /v2/, 3 = /v3/,
-   4 = /v4/ — each with its own index.html, styles.css and app.js, sharing
+   1–3 beside the phone. Each option is its OWN copy of the flow, so they can
+   be iterated independently: 1 = / (this folder), 2 = /v2/, 3 = /v3/ —
+   each with its own index.html, styles.css and app.js, sharing
    /assets and /fonts. The page's option is <html data-variant="n">; picking
    another number opens that copy. /?v=n still jumps straight to option n. */
 (() => {
   const nav = document.getElementById('vswitch'); if (!nav) return;
-  const PATHS = { 1: '/', 2: '/v2/', 3: '/v3/', 4: '/v4/' };
+  const PATHS = { 1: '/', 2: '/v2/', 3: '/v3/' };
   const here = document.documentElement.dataset.variant || '1';
   const want = new URLSearchParams(location.search).get('v');
   if (want && PATHS[want] && want !== here) { location.replace(PATHS[want]); return; }
