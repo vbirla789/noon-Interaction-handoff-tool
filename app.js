@@ -727,6 +727,48 @@ const Sfx = (() => {
   };
 })();
 
+/* ══ Haptics — paired with the slider's clicks ══════════════════════════════
+   tick: each ruler tick crossing the red line (same ≥100ms gate as the sound)
+   snap: a new product taking the slot; tap: the Notify press.
+   · Android / Chrome: the Vibration API (only after a real user gesture —
+     the browser ignores it before one).
+   · iPhone (Safari / WebKit 18+, which has no Vibration API): toggling a
+     hidden native <input type="checkbox" switch> through its <label> makes
+     iOS play its own selection haptic.
+   · A native host that exposes window.webkit.messageHandlers.haptic (e.g. a
+     WKWebView shell) gets the event too and can map it to a UIFeedbackGenerator. */
+const Haptics = (() => {
+  const iOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const VIBE = { tick: 5, snap: 12, tap: 9 };
+  let label = null;
+  const sw = () => {
+    if (label && label.isConnected) return label;
+    label = document.createElement('label');
+    label.setAttribute('aria-hidden', 'true');
+    label.style.cssText = 'position:fixed;left:-100px;top:0;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none';
+    const input = document.createElement('input');
+    input.type = 'checkbox'; input.setAttribute('switch', ''); input.tabIndex = -1;
+    label.appendChild(input); document.body.appendChild(label);
+    return label;
+  };
+  // a tick and a snap landing in the same frame would read as a double bump: within 50ms they merge
+  // (a tick is dropped; a snap after a tick upgrades it — Android's vibrate() replaces the running one)
+  let lastAt = -1e9, lastKind = '';
+  function fire(kind) {
+    const now = performance.now(), close = now - lastAt < 50;
+    if (close && (kind === 'tick' || lastKind !== 'tick' || !navigator.vibrate)) return;
+    lastAt = now; lastKind = kind;
+    try {
+      const native = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.haptic;
+      if (native) native.postMessage(kind);
+      if (navigator.vibrate) {
+        if (!navigator.userActivation || navigator.userActivation.hasBeenActive) navigator.vibrate(VIBE[kind] || 8);
+      } else if (iOS) sw().click();
+    } catch (_) {}
+  }
+  return { tick: () => fire('tick'), snap: () => fire('snap'), tap: () => fire('tap') };
+})();
+
 /* ══ Roster slider — ten products, snapping one by one into the slot ══════
    The pink selection (circle, indicator tick) stays fixed at the left; the
    products and the tick ruler slide underneath it:
@@ -836,9 +878,7 @@ const Sfx = (() => {
     sel = i;
     items.forEach((el, k) => { el.classList.toggle('is-sel', k === i); el.setAttribute('aria-selected', k === i); });
     if (sound) {
-      Sfx.snap(); lastTickAt = performance.now();
-      // haptic tap where supported — only after a real user gesture (browsers block it otherwise)
-      if (navigator.vibrate && navigator.userActivation && navigator.userActivation.hasBeenActive) navigator.vibrate(6);
+      Sfx.snap(); Haptics.snap(); lastTickAt = performance.now();
     }
   }
   function render(sound = true) {
@@ -862,7 +902,7 @@ const Sfx = (() => {
     if (ti !== lastTick) {
       lastTick = ti;
       const now = performance.now();
-      if (sound && now - lastTickAt >= 100) { lastTickAt = now; Sfx.tick(); }
+      if (sound && now - lastTickAt >= 100) { lastTickAt = now; Sfx.tick(); Haptics.tick(); }
     }
     select(clampSlot(Math.round(-x / PITCH)), sound);
     waveKick();
@@ -1173,8 +1213,7 @@ const Sfx = (() => {
       anims.push(pillCheck.animate(Array.from({ length: CN + 1 }, (_, k) => ({ offset: k / CN, scale: String(k === CN ? 1 : Math.max(0, 1 + cf.d((k / CN) * cd)).toFixed(4)) })),
         { duration: cd * 1000, delay: DONE.CHECK_AT, fill: 'both' }));
     }
-    Sfx.unlock(); Sfx.snap();
-    if (navigator.vibrate && navigator.userActivation && navigator.userActivation.hasBeenActive) navigator.vibrate(8);
+    Sfx.unlock(); Sfx.snap(); Haptics.tap();
     Promise.all(anims.map((a) => a.finished)).then(() => {
       pill.classList.add('is-done'); pill.setAttribute('aria-label', 'You are on the list for iPhone Duo');
       pillClear(); pill.style.scale = ''; notifying = false;
