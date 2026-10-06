@@ -709,41 +709,6 @@ const PP = (() => {
   reset();
 })();
 
-/* ══ Sound — synthesized picker clicks (no audio files) ═══════════════════
-   Measured from the slider reference: a crisp ~5ms click with a faint tail,
-   energy at 2.4–3.2kHz, one per ruler step, never closer than ~106ms.
-   Tick = noise burst through a 2.9kHz band-pass; snap = a slightly deeper,
-   fuller click for the product that lands in the selected slot.         */
-const Sfx = (() => {
-  let ctx = null;
-  const ensure = () => {
-    if (!ctx) { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null; ctx = new AC(); }
-    if (ctx.state === 'suspended') ctx.resume();
-    return ctx;
-  };
-  function click(freq, q, ms, gain, body = 0) {
-    const c = ensure(); if (!c || c.state !== 'running') return;
-    const t = c.currentTime, len = Math.max(1, Math.floor(c.sampleRate * ms / 1000));
-    const buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
-    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (len * 0.22));
-    const src = c.createBufferSource(); src.buffer = buf;
-    const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = freq; bp.Q.value = q;
-    const g = c.createGain(); g.gain.value = gain;
-    src.connect(bp).connect(g).connect(c.destination); src.start(t);
-    if (body) {                                  // a short sine "tock" gives the snap some weight
-      const o = c.createOscillator(), og = c.createGain();
-      o.frequency.setValueAtTime(freq * 0.62, t); o.frequency.exponentialRampToValueAtTime(freq * 0.45, t + 0.03);
-      og.gain.setValueAtTime(body, t); og.gain.exponentialRampToValueAtTime(0.0001, t + 0.035);
-      o.connect(og).connect(c.destination); o.start(t); o.stop(t + 0.04);
-    }
-  }
-  return {
-    unlock: ensure,
-    tick: () => click(2900, 4, 14, 0.07),
-    snap: () => click(2400, 3, 22, 0.12, 0.05),
-  };
-})();
-
 /* ══ Haptics — iOS-style feedback for taps and the ruler ═══════════════════
    Kinds (named after the iOS generators they map to):
      tick    UISelectionFeedbackGenerator — each ruler tick crossing the red line
@@ -834,8 +799,8 @@ const Haptics = (() => {
      the pink line reaches up; both ease back once it settles
    · first time in: it rests on the 3rd product, then glides to the Duo and
      the Notify pill pops up (see FTUX)
-   · a tick sounds as each ruler tick crosses the indicator (≥100ms apart,
-     as in the reference); a snap sounds when a new product takes the slot */
+   · haptics: a selection tick as each ruler tick crosses the indicator, a
+     snap when a new product takes the slot */
 (() => {
   const plp   = document.getElementById('plp');
   const rail  = document.getElementById('rosterRail');
@@ -916,17 +881,17 @@ const Haptics = (() => {
   items.forEach((el, i) => { el.setAttribute('role', 'option'); el.dataset.i = i; });
   dot.style.transformOrigin = '50% 50%';
 
-  let x = 0, v = 0, sel = -1, anim = null, drag = null, lastTick = 0, lastTickAt = 0, lastHapAt = 0, pastEdge = false, wheelT = 0, wheel = null;
+  let x = 0, v = 0, sel = -1, anim = null, drag = null, lastTick = 0, lastHapAt = 0, pastEdge = false, wheelT = 0, wheel = null;
 
-  function select(i, sound) {
+  function select(i, feedback) {
     if (i === sel) return;
     sel = i;
     items.forEach((el, k) => { el.classList.toggle('is-sel', k === i); el.setAttribute('aria-selected', k === i); });
-    if (sound) {
-      Sfx.snap(); Haptics.snap(); lastTickAt = performance.now();
+    if (feedback) {
+      Haptics.snap();
     }
   }
-  function render(sound = true) {
+  function render(feedback = true) {
     items.forEach((el, i) => {
       const p = slotPos(i);                                      // 0 = in the selected slot
       // unselected products sit at 90%; the scale follows the scroll position
@@ -947,15 +912,14 @@ const Haptics = (() => {
     if (ti !== lastTick) {
       lastTick = ti;
       const now = performance.now();
-      if (sound && now - lastTickAt >= 100) { lastTickAt = now; Sfx.tick(); }
       // haptic tick per ruler tick while dragging / coasting — but not in the frame a product lands
       // (that one gets the snap) and not past either end (no ruler there)
-      if (sound && slot === sel && x <= 0.5 && x >= X_MIN - 0.5 && now - lastHapAt >= 40) { lastHapAt = now; Haptics.tick(); }
+      if (feedback && slot === sel && x <= 0.5 && x >= X_MIN - 0.5 && now - lastHapAt >= 40) { lastHapAt = now; Haptics.tick(); }
     }
     // pulling past the first / last product: one rigid bump as the rubber band starts
     const past = x > 0.5 || x < X_MIN - 0.5;
-    if (past !== pastEdge) { pastEdge = past; if (past && sound) Haptics.edge(); }
-    select(slot, sound);
+    if (past !== pastEdge) { pastEdge = past; if (past && feedback) Haptics.edge(); }
+    select(slot, feedback);
     waveKick();
   }
 
@@ -1133,7 +1097,6 @@ const Haptics = (() => {
   rail.addEventListener('pointerdown', (e) => {
     if (e.button !== 0) return;
     ftuxCancel();
-    Sfx.unlock();
     drag = { id: e.pointerId, sx: e.clientX, sy: e.clientY, x0: x, locked: false, moved: 0, t: performance.now(), samples: [[performance.now(), x]], wasAnim: !!anim };
     if (e.pointerType === 'mouse') lock(e);
   });
@@ -1176,7 +1139,7 @@ const Haptics = (() => {
   rail.addEventListener('wheel', (e) => {
     const dx = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : (e.shiftKey ? e.deltaY : 0);
     if (!dx) return;
-    e.preventDefault(); Sfx.unlock(); ftuxCancel();
+    e.preventDefault(); ftuxCancel();
     anim = null; dotHide();
     const now = performance.now();
     if (!wheel || now - wheel.t > 120) wheel = { samples: [] };
@@ -1197,8 +1160,8 @@ const Haptics = (() => {
   rail.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') ftuxCancel();
     const from = anim ? Math.round(-anim.target / PITCH) : Math.round(-x / PITCH);
-    if (e.key === 'ArrowRight') { e.preventDefault(); Sfx.unlock(); goTo(clampSlot(from + 1)); }
-    if (e.key === 'ArrowLeft')  { e.preventDefault(); Sfx.unlock(); goTo(Math.max(0, from - 1)); }
+    if (e.key === 'ArrowRight') { e.preventDefault(); goTo(clampSlot(from + 1)); }
+    if (e.key === 'ArrowLeft')  { e.preventDefault(); goTo(Math.max(0, from - 1)); }
   });
 
   /* First-time hint — the widget reveals resting on the 3rd product with the
@@ -1264,7 +1227,7 @@ const Haptics = (() => {
       anims.push(pillCheck.animate(Array.from({ length: CN + 1 }, (_, k) => ({ offset: k / CN, scale: String(k === CN ? 1 : Math.max(0, 1 + cf.d((k / CN) * cd)).toFixed(4)) })),
         { duration: cd * 1000, delay: DONE.CHECK_AT, fill: 'both' }));
     }
-    Sfx.unlock(); Sfx.snap(); Haptics.success();
+    Haptics.success();
     Promise.all(anims.map((a) => a.finished)).then(() => {
       pill.classList.add('is-done'); pill.setAttribute('aria-label', 'You are on the list for iPhone Duo');
       pillClear(); pill.style.scale = ''; notifying = false;
