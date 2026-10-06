@@ -52,6 +52,7 @@
 
   /* ── kit shadow ── */
   --sh-card: 0 0 0 1px transparent, 0 1px 2px rgb(0 0 0 / .03), 0 16px 44px -24px rgb(0 0 0 / .18);
+  --sh-toast: 0 12px 32px -12px rgb(0 0 0 / .32);
   --sh-pill: 0 1px 2px rgb(0 0 0 / .06), 0 1px 1px rgb(0 0 0 / .04);
   --sh-device: 0 0 0 1px rgb(0 0 0 / .06), 0 1px 2px rgb(0 0 0 / .03), 0 24px 60px -24px rgb(0 0 0 / .35);
 
@@ -65,9 +66,10 @@
   --t-micro: 11px; --t-caption: 12px; --t-label: 13px; --t-ui: 14px; --t-body: 15px; --t-title: 17px;
 
   /* ── layout ── */
-  --gut: 20px; --card-w: 360px;
-  --lab: 320px; --rowh: 24px; --rowgap: 10px;
-  --tl-pt: 16px; --tl-pr: 20px; --tl-pb: 24px;
+  --gut: 28px; --card-w: 360px;
+  --stage-pad: 52px;   /* extra room above and below the phone, so it sits smaller and calmer on the stage */
+  --lab: 320px; --rowh: 24px; --rowgap: 14px;
+  --tl-pt: 20px; --tl-pr: 32px; --tl-pb: 28px;
 
   color-scheme: light;
 }
@@ -95,12 +97,12 @@ svg { flex: none; }
 .flow li button:active, .anims button:active { opacity: .7; }
 
 /* ── section head: 11px semibold caps, the kit's sidebar label ── */
-.eyebrow, .flow h3, .grp b, .insp__eyebrow { margin: 0; font-size: var(--t-micro); font-weight: 600; letter-spacing: .08em; line-height: 1.5; text-transform: uppercase; color: var(--muted); }
+.eyebrow, .grp b, .insp__eyebrow { margin: 0; font-size: var(--t-micro); font-weight: 600; letter-spacing: .08em; line-height: 1.5; text-transform: uppercase; color: var(--muted); }
 /* a count chip clubbed to its section head (as in the A/B library's "Customer 16"): a wash, muted semibold figures */
 .count { display: inline-grid; place-items: center; min-width: 20px; height: 18px; padding: 0 6px; border-radius: var(--r-xs); background: var(--wash-4); font-family: var(--sans); font-size: var(--t-micro); font-weight: 600; line-height: 1; color: var(--muted); letter-spacing: 0; text-transform: none; font-variant-numeric: tabular-nums; }
 
 /* ── top bar ── */
-.top { height: 56px; display: flex; align-items: center; gap: 12px; padding: 0 var(--gut) 0 12px; border-bottom: 1px solid var(--line); background: var(--bg); }
+.top { height: 56px; display: flex; align-items: center; gap: 12px; padding: 0 var(--gut) 0 18px; border-bottom: 1px solid var(--line); background: var(--bg); }
 .top__back { width: 32px; height: 32px; display: grid; place-items: center; border-radius: var(--r-chip); text-decoration: none; flex: none; color: var(--ink); }
 .top__back svg { width: 18px; height: 18px; }
 .top__title { font-size: var(--t-body); font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
@@ -108,6 +110,8 @@ svg { flex: none; }
 
 /* Primary button, md: ink fill, 14px medium, 14px corner. The one primary action on the page. */
 .copy, .insp__go { height: 36px; padding: 0 14px; border-radius: var(--r-control); background: var(--ink); color: var(--on-ink); font-size: var(--t-ui); font-weight: 500; flex: none; display: inline-flex; align-items: center; gap: 6px; }
+.copy { min-width: 104px; justify-content: center; }   /* "Copy link" ⇄ "Copied" without the button resizing */
+.copy svg { width: 15px; height: 15px; }
 
 /* ── canvas: the kit playground's dotted stage ── */
 .canvas { position: relative; height: clamp(600px, 66vh, 760px); overflow: hidden;
@@ -116,16 +120,20 @@ svg { flex: none; }
 .card { position: absolute; background: var(--card); border: 1px solid var(--line); border-radius: var(--r-tile); box-shadow: var(--sh-card); }
 
 /* left column: Layers and Flow are one accordion — opening one collapses the other to its header */
-.side { position: absolute; left: var(--gut); top: var(--gut); bottom: calc(var(--gut) + 46px + 12px); width: var(--card-w); z-index: 4; display: flex; flex-direction: column; gap: 12px; }
+.side { position: absolute; left: var(--gut); top: var(--gut); bottom: calc(var(--gut) + 46px + 16px); width: var(--card-w); z-index: 4; display: flex; flex-direction: column; gap: 16px; }
 .side > .card { position: relative; }
-.flow { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
-.flow__head { flex: none; height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 18px; border-bottom: 1px solid var(--line); }
-.flow ol { list-style: none; margin: 0; padding: 8px; overflow: auto; display: flex; flex-direction: column; gap: 2px; }
+.flow { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }   /* hugs its scenes; shrinks and scrolls when they don't fit */
+.card__head { flex: none; height: 52px; display: flex; align-items: center; gap: 8px; padding: 0 22px; border-bottom: 1px solid var(--line); background: var(--card); }
+.card__title { margin: 0; min-width: 0; font-size: var(--t-body); font-weight: 600; letter-spacing: -0.01em; line-height: 1.3; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card__title small { margin-left: 6px; font-size: inherit; font-weight: 400; color: var(--muted); }
+.card__title small::before { content: '· '; }
+.card__head .tag { margin: 0; flex: none; }
+.flow ol { list-style: none; margin: 0; padding: 10px; overflow: auto; display: flex; flex-direction: column; gap: 4px; }
 /* still scrolls (wheel, trackpad, touch, keyboard), just without a visible bar */
 .flow ol { scrollbar-width: none; }
 .flow ol::-webkit-scrollbar { display: none; }
 /* parent: a scene */
-.flow ol > li > button { width: 100%; text-align: left; display: grid; grid-template-columns: 24px 1fr auto; gap: 2px 10px; align-items: center; padding: 8px 10px; border-radius: var(--r-chip); }
+.flow ol > li > button { width: 100%; text-align: left; display: grid; grid-template-columns: 24px 1fr auto; gap: 2px 12px; align-items: center; padding: 10px 12px; border-radius: var(--r-chip); }
 .flow ol > li > button[aria-pressed="true"] { background: var(--wash-4); }
 /* scene number: the kit's count pill — micro mono on a wash; ink for the open scene */
 .flow .n { align-self: center; width: 24px; height: 20px; display: grid; place-items: center; border-radius: var(--r-xs); background: var(--wash-4); font-family: var(--mono); font-size: var(--t-micro); font-weight: 500; color: var(--muted); }
@@ -133,10 +141,10 @@ svg { flex: none; }
 .flow .nm { font-size: var(--t-ui); font-weight: 500; color: var(--ink); }
 .flow .len { font-family: var(--mono); font-size: var(--t-micro); color: var(--muted); }
 /* children: the layers that scene animates, on a guide line from the scene number */
-.tree { position: relative; list-style: none; margin: 2px 0 6px; padding: 0 0 0 22px; display: flex; flex-direction: column; gap: 1px; }
+.tree { position: relative; list-style: none; margin: 4px 0 8px; padding: 0 0 0 24px; display: flex; flex-direction: column; gap: 2px; }
 .tree.is-new { animation: panelIn var(--d-swap) var(--ease-out); }
-.tree::before { content: ''; position: absolute; left: 21.5px; top: 0; bottom: 16px; width: 1px; background: var(--line-strong); }
-.tree button { position: relative; width: 100%; height: 32px; display: flex; align-items: center; gap: 8px; padding: 0 10px 0 14px; border-radius: var(--r-chip); text-align: left; font-size: var(--t-label); color: var(--muted); }
+.tree::before { content: ''; position: absolute; left: 23.5px; top: 0; bottom: 16px; width: 1px; background: var(--line-strong); }
+.tree button { position: relative; width: 100%; height: 34px; display: flex; align-items: center; gap: 8px; padding: 0 10px 0 14px; border-radius: var(--r-chip); text-align: left; font-size: var(--t-label); color: var(--muted); }
 .tree button::before { content: ''; position: absolute; left: -0.5px; top: 50%; width: 8px; height: 1px; background: var(--line-strong); }
 .tree button[aria-pressed="true"] { background: var(--wash-4); color: var(--ink); font-weight: 500; }
 .tree button[data-cur] { color: var(--ink); font-weight: 500; }
@@ -151,22 +159,18 @@ svg { flex: none; }
 
 
 /* ── inspector: the kit playground's Props panel ── */
-.insp { right: var(--gut); top: var(--gut); width: var(--card-w); bottom: var(--gut); padding: 20px; overflow: auto; scrollbar-width: none; border-radius: var(--r-panel); }
+.insp { right: var(--gut); top: var(--gut); width: var(--card-w); max-height: calc(100% - var(--gut) * 2); padding: 0 22px 24px; overflow: auto; scrollbar-width: none; }   /* hugs its content, capped at the canvas */
+/* the header stays put while the panel scrolls */
+.insp > .card__head { position: sticky; top: 0; z-index: 1; margin: 0 -22px; }
 .insp::-webkit-scrollbar { display: none; }
-.insp h3 { margin: 0; font-size: var(--t-title); font-weight: 600; letter-spacing: -0.01em; line-height: 1.375; }
-.insp h3 .tag { vertical-align: 2px; }
-/* breadcrumb: where the selection sits in the Flow tree — scene › layer */
-.insp__crumb { margin: 0 0 6px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: var(--t-caption); color: var(--muted); }
-.insp__crumb i { font-style: normal; color: var(--line-control); }
-.insp__crumb span:last-child { color: var(--ink); font-weight: 500; }
 /* sections: Values · Timing · Easing, each under a caps head and a hairline */
-.isec { margin: 16px -20px 0; padding: 16px 20px 0; border-top: 1px solid var(--line); }   /* hairline edge to edge, like the Flow head's */
-.insp h3 + .isec { margin-top: 18px; }
-.isec__h { margin: 0 0 12px; display: flex; align-items: center; gap: 8px; font-size: var(--t-micro); font-weight: 600; letter-spacing: .08em; line-height: 1.5; text-transform: uppercase; color: var(--muted); }
+.isec { margin: 20px -22px 0; padding: 20px 22px 0; border-top: 1px solid var(--line); }   /* hairline edge to edge, like the Flow head's */
+.card__head + .isec { margin-top: 0; border-top: 0; }   /* the header's own hairline is the first divider */
+.isec__h { margin: 0 0 14px; display: flex; align-items: center; gap: 8px; font-size: var(--t-micro); font-weight: 600; letter-spacing: .08em; line-height: 1.5; text-transform: uppercase; color: var(--muted); }
 .isec__name { margin: 0 0 12px; display: flex; align-items: center; gap: 8px; font-size: var(--t-label); font-weight: 500; color: var(--ink); }
 .isec__name .tag { margin: 0; }
 /* label · value pairs, as in ProtoPie: the label muted, the value beside it in the accent */
-.insp .kv { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; margin: 0; }
+.insp .kv { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; margin: 0; }
 .insp .kv > div { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
 .insp .kv > .wide { grid-column: 1 / -1; }
 .insp .kv dt { flex: none; font-size: var(--t-label); color: var(--muted); }
@@ -179,7 +183,7 @@ svg { flex: none; }
 /* the layer's "at 0.8s on the playhead" caption */
 .insp__cap { margin: 12px 0 0; font-size: var(--t-caption); color: var(--muted); }
 .anims { list-style: none; margin: -4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
-.anims button { width: calc(100% + 20px); margin: 0 -10px; display: grid; grid-template-columns: 16px 1fr auto; gap: 10px; align-items: center; padding: 8px 10px; border-radius: var(--r-chip); text-align: left; }
+.anims button { width: calc(100% + 24px); margin: 0 -12px; display: grid; grid-template-columns: 16px 1fr auto; gap: 12px; align-items: center; padding: 10px 12px; border-radius: var(--r-chip); text-align: left; }
 .anims svg { width: 15px; height: 15px; }
 .anims .tree__ico { width: 14px; height: 14px; color: var(--muted); }
 .anims .n { width: 24px; height: 20px; display: grid; place-items: center; border-radius: var(--r-xs); background: var(--wash-4); font-family: var(--mono); font-size: var(--t-micro); font-weight: 500; color: var(--muted); }
@@ -189,7 +193,7 @@ svg { flex: none; }
 .anims__main span { font-family: var(--mono); font-size: var(--t-micro); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .anims__t { font-family: var(--mono); font-size: var(--t-micro); line-height: 1.5; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
 
-.stage { position: absolute; left: 50%; top: var(--gut); bottom: var(--gut); transform: translateX(-50%); display: grid; place-items: start center; }
+.stage { position: absolute; left: 50%; top: var(--stage-pad); bottom: var(--stage-pad); transform: translateX(-50%); display: grid; place-items: start center; }
 /* the device is rendered content, not chrome: it keeps its own square edge and white screen */
 /* The device frame, as in the A/B library: a solid ink outline, its thickness a fraction of the
    screen's height (÷152, ≈5.3pt on 812) so it stays in proportion when the phone is scaled to fit. */
@@ -215,7 +219,7 @@ svg { flex: none; }
 .tlwrap { overflow-x: auto; border-top: 1px solid var(--line); background: var(--bg); }
 .tl { position: relative; min-width: 940px; padding: var(--tl-pt) var(--tl-pr) var(--tl-pb) 0; }
 .tl__ruler { display: grid; grid-template-columns: var(--lab) 1fr; align-items: center; height: 40px; }
-.tl__start { height: 32px; margin-left: 12px; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 10px; background: var(--wash-3); border-radius: var(--r-chip); font-size: var(--t-label); font-weight: 600; white-space: nowrap; overflow: hidden; min-width: 0; }
+.tl__start { height: 32px; margin-left: 20px; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 10px; background: var(--wash-3); border-radius: var(--r-chip); font-size: var(--t-label); font-weight: 600; white-space: nowrap; overflow: hidden; min-width: 0; }
 .tl__start svg { width: 13px; height: 12px; }
 .tl__start small { font-size: var(--t-label); color: var(--ink); font-weight: 400; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .tl__scale { position: relative; height: 40px; margin-left: 10px; cursor: ew-resize; touch-action: none; }
@@ -228,11 +232,11 @@ svg { flex: none; }
 .tick--zero::after { left: 0; margin-left: 0; }
 .tl__rows { position: relative; }
 .grp { display: grid; grid-template-columns: var(--lab) 1fr; height: 34px; align-items: end; padding-bottom: 4px; }
-.grp b { padding-left: 22px; }
+.grp b { padding-left: 30px; }
 .grp span { position: relative; margin-left: 10px; padding-bottom: 1px; font-family: var(--mono); font-size: var(--t-micro); color: var(--muted); display: flex; align-items: center; gap: 8px; }
 .grp span::after { content: ''; flex: 1; height: 1px; background: var(--line); }
 .row { display: grid; grid-template-columns: var(--lab) 1fr; height: calc(var(--rowh) + var(--rowgap)); align-items: center; cursor: pointer; }
-.row__lab { display: flex; align-items: center; gap: 10px; height: calc(var(--rowh) + 4px); margin-left: 12px; padding-left: 10px; border-radius: var(--r-lg); font-size: var(--t-label); white-space: nowrap; overflow: hidden; transition: background-color var(--d-press) var(--ease-out); }
+.row__lab { display: flex; align-items: center; gap: 10px; height: calc(var(--rowh) + 4px); margin-left: 20px; padding-left: 10px; border-radius: var(--r-lg); font-size: var(--t-label); white-space: nowrap; overflow: hidden; transition: background-color var(--d-press) var(--ease-out); }
 .row__lab svg { width: 15px; height: 15px; color: var(--ink); }
 .row__lab b { font-weight: 500; }
 .row__lab span { color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
@@ -259,10 +263,20 @@ svg { flex: none; }
 .head__line { position: absolute; left: -7px; width: 14px; top: 20px; bottom: 0; pointer-events: auto; cursor: ew-resize; }
 body.is-scrubbing, body.is-scrubbing * { cursor: grabbing !important; user-select: none; }
 .lane { position: absolute; top: var(--tl-pt); bottom: var(--tl-pb); left: calc(var(--lab) + 10px); right: var(--tl-pr); pointer-events: none; }
-.foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin: 0; padding: 4px var(--tl-pr) 28px calc(var(--lab) + 10px); font-size: var(--t-caption); color: var(--muted); line-height: 1.6; }
+.foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin: 0; padding: 8px var(--tl-pr) 32px calc(var(--lab) + 10px); font-size: var(--t-caption); color: var(--muted); line-height: 1.6; }
 .foot code { font-family: var(--mono); font-size: var(--t-caption); }
 .legend { display: inline-flex; align-items: center; gap: 8px; }
 .legend i { display: inline-block; width: 18px; height: 8px; border-radius: 2px; }
+
+/* Toast, as the kit's: fixed 24px above the bottom, centred, ink pill, 14px medium. Arrives from the
+   edge it lives on (12px rise + fade, 200ms), leaves shorter and softer (6px, 120ms). */
+.toast { position: fixed; left: 0; right: 0; bottom: calc(24px + env(safe-area-inset-bottom)); z-index: 80; width: fit-content; max-width: calc(100% - 32px); margin: 0 auto;
+  display: flex; align-items: center; gap: 10px; padding: 10px 16px 10px 14px; border-radius: var(--r-control); background: var(--ink); color: var(--on-ink);
+  font-size: var(--t-ui); font-weight: 500; line-height: 1.5; box-shadow: var(--sh-toast); cursor: default;
+  transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out); }
+.toast svg { width: 16px; height: 16px; flex: none; color: var(--accent); }
+.toast.is-enter { opacity: 0; transform: translateY(12px); }
+.toast[data-closing] { opacity: 0; transform: translateY(6px); transition-duration: 120ms; pointer-events: none; }
 
 /* Hover lives in one place, behind a real pointer, so it never latches on touch. */
 @media (hover: hover) and (pointer: fine) {
@@ -277,8 +291,19 @@ body.is-scrubbing, body.is-scrubbing * { cursor: grabbing !important; user-selec
 }
 
 @media (max-width: 1240px) { :root { --card-w: 300px; } }
+/* App shell, desktop: the page is exactly one screen tall and never scrolls. The top bar and the
+   canvas hold still; only the timeline below scrolls, inside its own box (as ProtoPie's does).
+   The canvas gives the timeline at least 240px whenever the window allows. */
+@media (min-width: 961px) {
+  html, body { height: 100%; overflow: hidden; }
+  body { display: flex; flex-direction: column; }
+  .top { flex: none; }
+  .canvas { flex: none; height: clamp(440px, calc(100vh - 56px - 240px), 760px); }
+  .tlwrap { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-width: none; }
+  .tlwrap::-webkit-scrollbar { display: none; }
+}
 @media (max-width: 960px) {
-  :root { --lab: 220px; --gut: 16px; }
+  :root { --lab: 220px; --gut: 16px; --stage-pad: 16px; }
   .canvas { height: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
   .card, .stage, .ctrl, .side { position: static; transform: none; width: auto; }
   .side { flex: none; }
@@ -302,7 +327,7 @@ body.is-scrubbing, body.is-scrubbing * { cursor: grabbing !important; user-selec
 
 <section class="canvas" id="canvas">
   <div class="side" id="side">
-  <nav class="card flow" aria-label="Flow scenes"><div class="flow__head"><h3>Flow</h3><span class="count" id="flowCount"></span></div><ol id="flow"></ol></nav>
+  <nav class="card flow" aria-label="Flow scenes"><div class="card__head"><h3 class="card__title">Flow</h3><span class="count" id="flowCount"></span></div><ol id="flow"></ol></nav>
   </div>
   <div class="stage" id="stage">
     <div class="phone" id="phone">
@@ -335,6 +360,8 @@ body.is-scrubbing, body.is-scrubbing * { cursor: grabbing !important; user-selec
     <span class="legend"><i style="width:2px;height:12px;background:var(--dur);border-radius:1px"></i>haptic pulse</span>
   </p>
 </div>
+
+<div class="toasts" id="toasts" role="status" aria-live="polite" aria-atomic="true"></div>
 
 <script>
 /* ═══ SpecKit — generic helpers shared by every spec sheet (do not edit per project) ═══
@@ -758,14 +785,14 @@ window.SPEC = (() => {
       <path d="${d}" fill="none" stroke="currentColor" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`;
   }
   /* ═══ inspector: one view per thing selected on the left — scene → layer → animation ═══
-     A breadcrumb ties it back to the Flow tree; values read like ProtoPie's, the label
+     Its header is the Flow card's (title · chip); values read like ProtoPie's, the label
      beside the value and the value in the accent, grouped Values · Timing · Easing.    */
   let view = 'scene';                                           // 'scene' | 'layer' | 'track'
   const nn = (n) => String(n).padStart(2, '0');
   const kv = (items) => `<dl class="kv">${items.filter(Boolean).map(([k, val, wide]) => `<div${wide ? ' class="wide"' : ''}><dt>${k}</dt><dd>${val}</dd></div>`).join('')}</dl>`;
   const sec = (title, inner, count) => `<section class="isec"><p class="isec__h">${title}${count != null ? `<span class="count">${count}</span>` : ''}</p>${inner}</section>`;
-  const crumb = (...parts) => `<p class="insp__crumb">${parts.filter(Boolean).map((x) => `<span>${x}</span>`).join('<i aria-hidden="true">›</i>')}</p>`;
-  const sceneCrumb = () => `${nn(sc)} ${SCENES[sc].name}`;
+  // the same header the Flow card uses: title, then an optional chip
+  const head = (title, chip = '') => `<header class="card__head"><h3 class="card__title">${title}</h3>${chip}</header>`;
   function easeOf(r) {                                          // → { name, items, code }
     const e = r.ease;
     if (e.kind === 'spring') {
@@ -794,12 +821,12 @@ window.SPEC = (() => {
     const S0 = SCENES[sc], len = fmtS(sceneEnd(rows));
     if (S0.overview) {
       const scs = rows.filter((r) => r.scene != null);
-      $('insp').innerHTML = `<h3>${S0.name}</h3>
+      $('insp').innerHTML = `${head(S0.name)}
         ${sec('Summary', kv([['Length', len], ['Scenes', scs.length]]))}
         ${sec('Scenes', list(scs.map((r) => `<li><button data-go="${r.scene}"><span class="n">${nn(r.scene)}</span><span class="anims__main"><b>${r.layer}</b></span><span class="anims__t">${fmtS(r.dur)}</span></button></li>`)), scs.length)}`;
     } else {
       const ls = layersOf(rows), n = rows.filter((r) => !r.grp).length;
-      $('insp').innerHTML = `<h3>${S0.name}${S0.varies ? '<span class="tag tag--warm">varies</span>' : ''}</h3>
+      $('insp').innerHTML = `${head(S0.name, S0.varies ? '<span class="tag tag--warm">varies</span>' : '')}
         ${sec('Summary', kv([['Length', len], ['Layers', ls.length], ['Animations', n]]))}
         ${sec('Layers', list(ls.map(([l, e]) => `<li><button data-l="${esc(l)}">${LAYER_ICO}<span class="anims__main"><b>${l}</b></span><span class="anims__t">${e.n}</span></button></li>`)), ls.length)}`;
     }
@@ -814,7 +841,7 @@ window.SPEC = (() => {
     const r = rows[i];
     if (r.scene != null) {                                      // a scene, on the Overview timeline
       const sr = SCENES[r.scene].rows(v).filter((x) => !x.grp);
-      $('insp').innerHTML = `${crumb(sceneCrumb())}<h3>${nn(r.scene)} ${r.layer}</h3>
+      $('insp').innerHTML = `${head(`${nn(r.scene)} ${r.layer}`)}
         ${sec('Summary', kv([['Starts', fmtMs(r.delay)], ['Length', fmtMs(r.dur)], ['Animations', sr.length], ['Layers', [...new Set(sr.map((x) => x.layer))].join(', '), true]]))}
         <button class="insp__go" data-go="${r.scene}">Open scene ${nn(r.scene)} →</button>`;
       highlight(null); renderFlow(); return;
@@ -823,7 +850,7 @@ window.SPEC = (() => {
     const values = r.parts ? kv(parts.map((x) => [x.prop, `${x.from} → ${x.to}`, true])) : kv([['From', r.from], ['To', r.to]]);
     const timing = kv([['Delay', `${r.approx ? '≈ ' : ''}${fmtMs(r.delay)}`], ['Duration', `${fmtMs(r.dur)}${r.repeat ? ' · repeats' : ''}`],
       ['Ends', `${r.approx ? '≈ ' : ''}${fmtMs(rowEnd(r))}`], r.stagger && ['Stagger', `×${r.stagger.n} · ${r.stagger.step}ms · ${r.stagger.order}`, true]]);
-    $('insp').innerHTML = `${crumb(sceneCrumb(), r.layer)}<h3>${r.prop}</h3>
+    $('insp').innerHTML = `${head(`${r.prop}<small>${r.layer}</small>`)}
       ${r.from === '—' ? '' : sec('Values', values)}
       ${sec('Timing', timing)}
       ${same ? easeSec(parts[0]) : parts.map((x) => easeSec(x, `Easing · ${x.prop}`)).join('')}
@@ -859,7 +886,7 @@ window.SPEC = (() => {
     layerFilter = name; layerView = name; view = 'layer'; selected = -1; propsAt = -1; clearRowSel();
     applyFilter();
     const tracks = rows.map((r, i) => [r, i]).filter(([r]) => !r.grp && r.scene == null && r.layer === name);
-    $('insp').innerHTML = `${crumb(sceneCrumb(), 'Layer')}<h3>${name}</h3>
+    $('insp').innerHTML = `${head(name, '<span class="tag">Layer</span>')}
       ${sec('Properties', `<dl class="kv" id="layerProps"></dl><p class="insp__cap" id="layerAt"></p>`)}
       ${sec('Animations', list(tracks.map(([r, i]) => `<li><button data-i="${i}">${ICON[r.icon]}<span class="anims__main"><b>${r.prop}</b><span>${(r.parts || [r]).map((x) => `${x.from} → ${x.to}`).join(' · ')}</span></span>
         <span class="anims__t">${r.approx ? '≈' : ''}${fmtMs(r.delay)}<br>${fmtMs(r.dur)}</span></button></li>`)), tracks.length)}`;
@@ -1213,7 +1240,33 @@ window.SPEC = (() => {
   $('rows').addEventListener('mouseleave', () => { highlight(view === 'track' && rows[selected] ? rows[selected].sel : view === 'layer' ? layerSel(layerView) : null); });
   $('play').addEventListener('click', () => togglePlay());
   $('speed').addEventListener('click', () => { speedIdx = (speedIdx + 1) % SPEEDS.length; $('speedLbl').textContent = `× ${SPEEDS[speedIdx]}`; });
-  $('copy').addEventListener('click', async () => { try { await navigator.clipboard.writeText(location.href); $('copy').textContent = 'Copied'; } catch (_) { $('copy').textContent = 'Copy failed'; } setTimeout(() => ($('copy').textContent = 'Copy link'), 1400); });
+  // toast — one at a time; a repeat replays its entrance. Stays 3s, and waits while it is hovered.
+  const CHECK = '<svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"/></svg>';
+  let toastT = 0;
+  function toast(msg, icon = CHECK) {
+    clearTimeout(toastT);
+    const el = document.createElement('div'); el.className = 'toast is-enter'; el.innerHTML = `${icon}<span>${msg}</span>`;
+    $('toasts').replaceChildren(el);
+    void el.offsetWidth; el.classList.remove('is-enter');      // commit the start state, then transition (no frame wait, so it also runs in a background tab)
+    let left = 3000, from = 0;
+    const close = () => { el.dataset.closing = ''; setTimeout(() => el.remove(), 140); };
+    const arm = () => { from = performance.now(); toastT = setTimeout(close, left); };
+    el.addEventListener('mouseenter', () => { clearTimeout(toastT); left = Math.max(800, left - (performance.now() - from)); });
+    el.addEventListener('mouseleave', arm);
+    arm();
+  }
+  async function copyText(t) {
+    try { await navigator.clipboard.writeText(t); return true; } catch (_) {}
+    try { const ta = document.createElement('textarea'); ta.value = t; ta.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(ta); ta.select();
+      const ok = document.execCommand('copy'); ta.remove(); return ok; } catch (_) { return false; }
+  }
+  let copyT = 0;
+  $('copy').addEventListener('click', async () => {
+    const ok = await copyText(location.href), b = $('copy');
+    b.innerHTML = ok ? `${CHECK}Copied` : 'Copy failed';
+    toast(ok ? 'Link copied' : 'Couldn’t copy the link', ok ? CHECK : '');
+    clearTimeout(copyT); copyT = setTimeout(() => { b.textContent = 'Copy link'; }, 2000);
+  });
   addEventListener('keydown', (e) => { if (e.key === ' ' && e.target === document.body) { e.preventDefault(); togglePlay(); } });
 
   document.title = window.SPEC.title.replace(/ — .*/, '') + ' Spec';
