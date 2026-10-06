@@ -909,36 +909,43 @@ img.contain { object-fit: contain; }
   transform-origin: 50% 100%; will-change: transform; }   /* grows upward with the ruler wave */
 
 /* ── Variant switcher — prototype tool beside the phone (not part of the app UI) ──
-   White pill 52px wide, 40px circles 8px apart; active = red #E33C4D with a white digit.
-   Picking one sets <html data-variant="n">, so each variation can be styled/scripted on its own. */
+   Styled with the internal-tools kit (Lightweight UI), the same as the spec sheet's cards: a flat white
+   card with a hairline and smoothed (near-square) corners, 36px segments, Geist figures; the chosen
+   option is ink. Picking one sets <html data-variant="n">, so each variation can be styled/scripted on its own. */
 .vswitch {
+  --vs-ink: #18191d; --vs-muted: #666879; --vs-line: #ededec;
   position: fixed; top: 50%; left: calc(50% - 187.5px - 28px); transform: translate(-100%, -50%); z-index: 1000;
-  display: flex; flex-direction: column; gap: 8px; padding: 9.5px 6px;
-  background: #fff; border-radius: 999px; box-shadow: 0 4px 18px rgba(20, 24, 40, .08), 0 1px 3px rgba(20, 24, 40, .06);
+  display: flex; flex-direction: column; gap: 4px; padding: 6px;
+  background: #fff; border: 1px solid var(--vs-line); border-radius: 16px; corner-shape: superellipse(4);
+  box-shadow: 0 1px 2px rgb(0 0 0 / .04);
 }
 .vswitch__b {
-  width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center;
-  background: #ededed; color: #0c0c0c; font-family: var(--noon); font-weight: 700; font-size: 21px; line-height: 1;
-  cursor: pointer; transition: background-color .22s ease, color .22s ease, transform .18s cubic-bezier(.2, .9, .3, 1.3);
+  width: 36px; height: 36px; border-radius: 10px; corner-shape: superellipse(4); display: grid; place-items: center;
+  background: transparent; color: var(--vs-muted); font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-weight: 500; font-size: 14px; line-height: 1; font-variant-numeric: tabular-nums;
+  cursor: pointer; transition: background-color 160ms cubic-bezier(.23, 1, .32, 1), color 160ms cubic-bezier(.23, 1, .32, 1), transform 160ms cubic-bezier(.23, 1, .32, 1);
   -webkit-tap-highlight-color: transparent;
 }
-.vswitch__b:hover { background: #e3e3e3; }
-.vswitch__b:active { transform: scale(.92); }
-.vswitch__b[aria-pressed="true"] { background: #e33c4d; color: #fff; }
-.vswitch__b:focus-visible { outline: 2px solid #e33c4d; outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) { .vswitch__b:hover { background: color-mix(in oklab, var(--vs-ink) 4%, transparent); color: var(--vs-ink); } }
+.vswitch__b:active { transform: scale(.97); }
+.vswitch__b[aria-pressed="true"] { background: var(--vs-ink); color: #fff; }
+.vswitch__b:focus-visible { outline: 2px solid var(--vs-ink); outline-offset: 2px; }
+@supports not (corner-shape: round) { .vswitch { border-radius: 2.4px; } .vswitch__b { border-radius: 1.5px; } }   /* no superellipse (Safari, Firefox): the plain-rounding equivalent */
 @media (max-width: 520px) { .vswitch { display: none; } }   /* phone-sized screens: no room beside the frame */
 /* Reset — restarts the whole flow on this option (below the numbers, after a hairline) */
-.vswitch__sep { display: block; width: 24px; height: 1px; margin: 2px auto; background: #e3e3e3; }
-.vswitch__reset { color: #0c0c0c; }
+.vswitch__sep { display: block; width: 20px; height: 1px; margin: 4px auto; background: var(--vs-line); }
+.vswitch__reset, .vswitch__spec { color: var(--vs-ink); }
+.vswitch__reset svg, .vswitch__spec svg { width: 18px; height: 18px; }
 .vswitch__reset svg { transition: transform .45s cubic-bezier(.2, .9, .3, 1); }
 .vswitch__reset:hover svg { transform: rotate(-35deg); }
 .vswitch__reset.is-spinning svg { transform: rotate(-360deg); transition-duration: .5s; }
-/* Spec Sheet — opens the widget-reveal animation spec for this option; its label shows on hover */
-.vswitch__spec { position: relative; color: #0c0c0c; }
+/* Spec Sheet — opens the widget-reveal animation spec for this option; its label shows on hover (the kit's tooltip) */
+.vswitch__spec { position: relative; }
 .vswitch__spec::after {
   content: attr(data-tip); position: absolute; right: calc(100% + 12px); top: 50%; transform: translate(4px, -50%);
-  padding: 6px 10px; border-radius: 8px; background: #0c0c0c; color: #fff; font-size: 13px; font-weight: 600; white-space: nowrap;
-  opacity: 0; pointer-events: none; transition: opacity .18s ease, transform .18s ease;
+  padding: 6px 8px; border-radius: 8px; corner-shape: superellipse(4); background: var(--vs-ink); color: #fff;
+  font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 12px; font-weight: 500; white-space: nowrap;
+  box-shadow: 0 4px 12px -4px rgb(0 0 0 / .4); opacity: 0; pointer-events: none; transition: opacity 125ms cubic-bezier(.23, 1, .32, 1), transform 125ms cubic-bezier(.23, 1, .32, 1);
 }
 .vswitch__spec:hover::after, .vswitch__spec:focus-visible::after { opacity: 1; transform: translate(0, -50%); }
 
