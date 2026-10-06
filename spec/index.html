@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400..700&family=Geist+Mono:wght@400..600&display=swap" rel="stylesheet" />
 <style>
 /* Animation spec sheet for the whole noon flow — Home → Search → Results → iPhone widget → Notify → back.
-   Same layout as a ProtoPie recording view: canvas (flow → layers tree · device · live preview · playback)
+   Same layout as a ProtoPie recording view: canvas (flow → layers tree · live preview · inspector · playback)
    over a timeline of property tracks — light bar = delay, dark bar = duration.
    The preview is the real prototype in an iframe; this page only drives it (it never edits it).
 
@@ -95,9 +95,9 @@ svg { flex: none; }
 .flow li button:active, .anims button:active { opacity: .7; }
 
 /* ── section head: 11px semibold caps, the kit's sidebar label ── */
-.eyebrow, .flow h3, .device h3, .grp b, .insp__eyebrow { margin: 0; font-size: var(--t-micro); font-weight: 600; letter-spacing: .08em; line-height: 1.5; text-transform: uppercase; color: var(--muted); }
-/* a count beside a section head, as in the kit's sidebar */
-.count { font-family: var(--sans); font-size: var(--t-caption); font-weight: 500; color: var(--muted); letter-spacing: 0; text-transform: none; }
+.eyebrow, .flow h3, .grp b, .insp__eyebrow { margin: 0; font-size: var(--t-micro); font-weight: 600; letter-spacing: .08em; line-height: 1.5; text-transform: uppercase; color: var(--muted); }
+/* a count chip clubbed to its section head (as in the A/B library's "Customer 16"): a wash, muted semibold figures */
+.count { display: inline-grid; place-items: center; min-width: 20px; height: 18px; padding: 0 6px; border-radius: var(--r-xs); background: var(--wash-4); font-family: var(--sans); font-size: var(--t-micro); font-weight: 600; line-height: 1; color: var(--muted); letter-spacing: 0; text-transform: none; font-variant-numeric: tabular-nums; }
 
 /* ── top bar ── */
 .top { height: 56px; display: flex; align-items: center; gap: 12px; padding: 0 var(--gut) 0 12px; border-bottom: 1px solid var(--line); background: var(--bg); }
@@ -119,24 +119,28 @@ svg { flex: none; }
 .side { position: absolute; left: var(--gut); top: var(--gut); bottom: calc(var(--gut) + 46px + 12px); width: var(--card-w); z-index: 4; display: flex; flex-direction: column; gap: 12px; }
 .side > .card { position: relative; }
 .flow { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
-.flow__head { flex: none; height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 18px; }
-.flow__head h3 { flex: 1; }
-.flow ol { list-style: none; margin: 0; padding: 0 8px 8px; overflow: auto; display: flex; flex-direction: column; gap: 2px; }
+.flow__head { flex: none; height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 18px; border-bottom: 1px solid var(--line); }
+.flow ol { list-style: none; margin: 0; padding: 8px; overflow: auto; display: flex; flex-direction: column; gap: 2px; }
+/* still scrolls (wheel, trackpad, touch, keyboard), just without a visible bar */
+.flow ol { scrollbar-width: none; }
+.flow ol::-webkit-scrollbar { display: none; }
 /* parent: a scene */
 .flow ol > li > button { width: 100%; text-align: left; display: grid; grid-template-columns: 24px 1fr auto; gap: 2px 10px; align-items: center; padding: 8px 10px; border-radius: var(--r-chip); }
 .flow ol > li > button[aria-pressed="true"] { background: var(--wash-4); }
 /* scene number: the kit's count pill — micro mono on a wash; ink for the open scene */
-.flow .n { grid-row: 1 / 3; align-self: start; margin-top: 1px; width: 24px; height: 20px; display: grid; place-items: center; border-radius: var(--r-xs); background: var(--wash-4); font-family: var(--mono); font-size: var(--t-micro); font-weight: 500; color: var(--muted); }
+.flow .n { align-self: center; width: 24px; height: 20px; display: grid; place-items: center; border-radius: var(--r-xs); background: var(--wash-4); font-family: var(--mono); font-size: var(--t-micro); font-weight: 500; color: var(--muted); }
 .flow button[aria-current="true"] .n { background: var(--ink); color: var(--on-ink); }
 .flow .nm { font-size: var(--t-ui); font-weight: 500; color: var(--ink); }
 .flow .len { font-family: var(--mono); font-size: var(--t-micro); color: var(--muted); }
-.flow .tr { grid-column: 2 / 4; font-size: var(--t-label); line-height: 1.45; color: var(--muted); }
 /* children: the layers that scene animates, on a guide line from the scene number */
-.tree { position: relative; list-style: none; margin: 2px 0 6px; padding: 0 0 0 22px; display: flex; flex-direction: column; gap: 1px; animation: panelIn var(--d-swap) var(--ease-out); }
+.tree { position: relative; list-style: none; margin: 2px 0 6px; padding: 0 0 0 22px; display: flex; flex-direction: column; gap: 1px; }
+.tree.is-new { animation: panelIn var(--d-swap) var(--ease-out); }
 .tree::before { content: ''; position: absolute; left: 21.5px; top: 0; bottom: 16px; width: 1px; background: var(--line-strong); }
 .tree button { position: relative; width: 100%; height: 32px; display: flex; align-items: center; gap: 8px; padding: 0 10px 0 14px; border-radius: var(--r-chip); text-align: left; font-size: var(--t-label); color: var(--muted); }
 .tree button::before { content: ''; position: absolute; left: -0.5px; top: 50%; width: 8px; height: 1px; background: var(--line-strong); }
 .tree button[aria-pressed="true"] { background: var(--wash-4); color: var(--ink); font-weight: 500; }
+.tree button[data-cur] { color: var(--ink); font-weight: 500; }
+.tree button[data-cur] .tree__ico { color: var(--accent); }
 .tree__ico { width: 14px; height: 14px; flex: none; }
 .tree__nm { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tree__n { font-family: var(--mono); font-size: var(--t-micro); font-weight: 400; color: var(--muted); }
@@ -145,34 +149,41 @@ svg { flex: none; }
 .tag { display: inline-flex; align-items: center; height: 18px; padding: 0 7px; border-radius: var(--r-full); background: var(--wash-4); color: var(--muted); font-family: var(--sans); font-size: var(--t-micro); font-weight: 500; line-height: 1; vertical-align: 1px; margin-left: 6px; letter-spacing: 0; text-transform: none; }
 .tag--warm { background: var(--draft-bg); color: var(--draft); }
 
-.device { right: var(--gut); top: var(--gut); width: var(--card-w); padding: 0 16px; height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.device p { margin: 0; font-family: var(--mono); font-size: var(--t-caption); color: var(--ink); }
 
 /* ── inspector: the kit playground's Props panel ── */
-.insp { right: var(--gut); top: calc(var(--gut) + 44px + 12px); width: var(--card-w); bottom: var(--gut); padding: 20px; overflow: auto; scrollbar-width: thin; border-radius: var(--r-panel); }
+.insp { right: var(--gut); top: var(--gut); width: var(--card-w); bottom: var(--gut); padding: 20px; overflow: auto; scrollbar-width: none; border-radius: var(--r-panel); }
+.insp::-webkit-scrollbar { display: none; }
 .insp h3 { margin: 0; font-size: var(--t-title); font-weight: 600; letter-spacing: -0.01em; line-height: 1.375; }
-.insp h3 span { font-weight: 400; color: var(--muted) !important; }
-.insp__sub { margin: 6px 0 16px; font-size: var(--t-label); color: var(--muted); }
-/* inline code: the kit's kbd — mono on a wash with a hairline */
-.insp__sub code { display: inline-block; padding: 1px 6px; border: 1px solid var(--line); border-radius: var(--r-xs); background: var(--wash-2); color: var(--ink); font-family: var(--mono); font-size: var(--t-micro) !important; }
-.insp dl { display: grid; grid-template-columns: auto 1fr; gap: 10px 16px; margin: 0; font-size: var(--t-label); }
-.insp dt { color: var(--muted); }
-.insp dd { margin: 0; font-family: var(--mono); font-size: var(--t-caption); text-align: right; word-break: break-word; color: var(--ink); }
-.insp hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
-.insp__plot { display: block; width: 100%; height: 104px; margin: 0 0 16px; padding: 6px 4px; border: 1px solid var(--line); border-radius: var(--r-xl); background: var(--wash-1); color: var(--ink); }
-.insp__note { font-size: var(--t-label); line-height: 1.55; color: var(--muted); margin: 16px 0 0; }
+.insp h3 .tag { vertical-align: 2px; }
+/* breadcrumb: where the selection sits in the Flow tree — scene › layer */
+.insp__crumb { margin: 0 0 6px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: var(--t-caption); color: var(--muted); }
+.insp__crumb i { font-style: normal; color: var(--line-control); }
+.insp__crumb span:last-child { color: var(--ink); font-weight: 500; }
+/* sections: Values · Timing · Easing, each under a caps head and a hairline */
+.isec { margin: 16px -20px 0; padding: 16px 20px 0; border-top: 1px solid var(--line); }   /* hairline edge to edge, like the Flow head's */
+.insp h3 + .isec { margin-top: 18px; }
+.isec__h { margin: 0 0 12px; display: flex; align-items: center; gap: 8px; font-size: var(--t-micro); font-weight: 600; letter-spacing: .08em; line-height: 1.5; text-transform: uppercase; color: var(--muted); }
+.isec__name { margin: 0 0 12px; display: flex; align-items: center; gap: 8px; font-size: var(--t-label); font-weight: 500; color: var(--ink); }
+.isec__name .tag { margin: 0; }
+/* label · value pairs, as in ProtoPie: the label muted, the value beside it in the accent */
+.insp .kv { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; margin: 0; }
+.insp .kv > div { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.insp .kv > .wide { grid-column: 1 / -1; }
+.insp .kv dt { flex: none; font-size: var(--t-label); color: var(--muted); }
+.insp .kv dd { margin: 0; min-width: 0; font-family: var(--mono); font-size: var(--t-label); font-weight: 500; color: var(--accent); word-break: break-word; font-variant-numeric: tabular-nums; }
+.insp__plot { display: block; width: 100%; height: 104px; margin: 0 0 16px; padding: 6px 4px; border: 1px solid var(--line); border-radius: var(--r-xl); background: var(--wash-1); color: var(--accent); }   /* the curve in the accent */
+.isec .insp__plot { margin: 0 0 14px; }
 /* code block: the kit's — Geist Mono 12.5 on the faintest wash, hairline, 14×16 padding */
 .insp__code { display: block; margin-top: 16px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--r-xl); background: var(--wash-2); font-family: var(--mono); font-size: 12.5px; line-height: 1.625; color: color-mix(in oklab, var(--ink) 90%, transparent); word-break: break-all; }
 .insp__go { margin-top: 20px; }
-.insp__eyebrow { margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
-.insp__eyebrow + h3 { margin-bottom: 16px; }
-/* layer properties, laid out like ProtoPie's: two columns of label · value */
-.insp dl.props { grid-template-columns: 1fr 1fr; gap: 10px 24px; }
-.props > div { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+/* the layer's "at 0.8s on the playhead" caption */
 .insp__cap { margin: 12px 0 0; font-size: var(--t-caption); color: var(--muted); }
-.anims { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.anims { list-style: none; margin: -4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
 .anims button { width: calc(100% + 20px); margin: 0 -10px; display: grid; grid-template-columns: 16px 1fr auto; gap: 10px; align-items: center; padding: 8px 10px; border-radius: var(--r-chip); text-align: left; }
 .anims svg { width: 15px; height: 15px; }
+.anims .tree__ico { width: 14px; height: 14px; color: var(--muted); }
+.anims .n { width: 24px; height: 20px; display: grid; place-items: center; border-radius: var(--r-xs); background: var(--wash-4); font-family: var(--mono); font-size: var(--t-micro); font-weight: 500; color: var(--muted); }
+.anims button:has(.n) { grid-template-columns: 24px 1fr auto; }
 .anims__main { display: flex; flex-direction: column; min-width: 0; }
 .anims__main b { font-size: var(--t-label); font-weight: 500; }
 .anims__main span { font-family: var(--mono); font-size: var(--t-micro); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -180,14 +191,14 @@ svg { flex: none; }
 
 .stage { position: absolute; left: 50%; top: var(--gut); bottom: var(--gut); transform: translateX(-50%); display: grid; place-items: start center; }
 /* the device is rendered content, not chrome: it keeps its own square edge and white screen */
-.phone { position: relative; width: var(--pw, 375px); height: var(--ph, 812px); transform-origin: 0 0; background: #fff; overflow: hidden; box-shadow: var(--sh-device); }
+/* The device frame, as in the A/B library: a solid ink outline, its thickness a fraction of the
+   screen's height (÷152, ≈5.3pt on 812) so it stays in proportion when the phone is scaled to fit. */
+.phone { position: relative; width: var(--pw, 375px); height: var(--ph, 812px); transform-origin: 0 0; background: #fff; overflow: hidden;
+  outline: calc(var(--ph, 812px) / 152) solid var(--ink); box-shadow: var(--sh-device); }
 .phone iframe { position: absolute; left: 0; top: 0; width: var(--pw, 375px); height: var(--ph, 812px); border: 0; opacity: 0; pointer-events: none; }
 .phone iframe.is-front { opacity: 1; pointer-events: auto; }
-.phone__veil { position: absolute; inset: 0; display: grid; place-items: center; background: color-mix(in oklab, var(--bg) 92%, transparent); font-size: 22px; font-weight: 500; color: var(--muted); transition: opacity 200ms var(--ease-out); text-align: center; padding: 40px; }
-.phone__veil[hidden] { display: grid; opacity: 0; pointer-events: none; }
-.rec { position: absolute; z-index: 2; left: 28px; top: 28px; width: 14px; height: 14px; border-radius: 50%; corner-shape: round; background: var(--head); box-shadow: 0 0 0 4px color-mix(in oklab, var(--head) 20%, transparent); opacity: 0; transition: opacity 200ms var(--ease-out); }
-.rec.is-on { opacity: 1; animation: recPulse 1.6s ease-in-out infinite; }
-@keyframes recPulse { 50% { box-shadow: 0 0 0 7px color-mix(in oklab, var(--head) 8%, transparent); } }
+.phone__veil { position: absolute; inset: 0; display: grid; place-items: center; background: color-mix(in oklab, var(--bg) 92%, transparent); font-size: var(--t-ui); font-weight: 500; color: var(--muted); text-align: center; padding: 40px; transition: opacity 200ms var(--ease-out) 150ms; }
+.phone__veil[hidden] { display: grid; opacity: 0; pointer-events: none; transition-delay: 0ms; }
 
 /* playback: a floating toolbar, control-radius, ghost buttons with one ink play button */
 .ctrl { position: absolute; left: var(--gut); bottom: var(--gut); height: 46px; display: flex; align-items: center; gap: 4px; padding: 6px; background: var(--card); border: 1px solid var(--line); border-radius: var(--r-2xl); box-shadow: var(--sh-card); z-index: 3; }
@@ -206,7 +217,7 @@ svg { flex: none; }
 .tl__ruler { display: grid; grid-template-columns: var(--lab) 1fr; align-items: center; height: 40px; }
 .tl__start { height: 32px; margin-left: 12px; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 10px; background: var(--wash-3); border-radius: var(--r-chip); font-size: var(--t-label); font-weight: 600; white-space: nowrap; overflow: hidden; min-width: 0; }
 .tl__start svg { width: 13px; height: 12px; }
-.tl__start small { font-size: var(--t-caption); color: var(--muted); font-weight: 400; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.tl__start small { font-size: var(--t-label); color: var(--ink); font-weight: 400; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .tl__scale { position: relative; height: 40px; margin-left: 10px; cursor: ew-resize; touch-action: none; }
 .tl__scale::after { content: ''; position: absolute; left: 0; right: 0; top: 26px; height: 1px; background: var(--line-strong); }
 .tick { position: absolute; top: 5px; font-family: var(--mono); font-size: var(--t-micro); color: var(--muted); transform: translateX(-50%); white-space: nowrap; }
@@ -236,7 +247,6 @@ svg { flex: none; }
 .bar--dur { background: var(--dur); color: var(--dur-ink); border-radius: var(--r-xs); }
 .bar--approx { background: repeating-linear-gradient(135deg, var(--dur) 0 6px, color-mix(in oklab, var(--dur) 72%, var(--bg)) 6px 12px); }
 .bar--repeat { background: linear-gradient(90deg, var(--dur) 70%, color-mix(in oklab, var(--dur) 20%, transparent)); }
-.bar--step { border-radius: 2px; }
 .bar--mark { width: 2px; margin-left: -1px; background: var(--dur); border-radius: 1px; }
 .bar--scene { background: var(--ink); }
 .bar span { padding: 0 6px; }
@@ -248,7 +258,6 @@ svg { flex: none; }
 .grip { position: absolute; left: -14px; top: -8px; width: 28px; height: 30px; pointer-events: auto; cursor: grab; border-radius: 50%; corner-shape: round; touch-action: none; }
 .head__line { position: absolute; left: -7px; width: 14px; top: 20px; bottom: 0; pointer-events: auto; cursor: ew-resize; }
 body.is-scrubbing, body.is-scrubbing * { cursor: grabbing !important; user-select: none; }
-.buf { position: absolute; left: 0; top: 24px; height: 3px; width: 0; background: color-mix(in oklab, var(--head) 30%, transparent); border-radius: 2px; transition: width .1s linear; }
 .lane { position: absolute; top: var(--tl-pt); bottom: var(--tl-pb); left: calc(var(--lab) + 10px); right: var(--tl-pr); pointer-events: none; }
 .foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin: 0; padding: 4px var(--tl-pr) 28px calc(var(--lab) + 10px); font-size: var(--t-caption); color: var(--muted); line-height: 1.6; }
 .foot code { font-family: var(--mono); font-size: var(--t-caption); }
@@ -297,11 +306,9 @@ body.is-scrubbing, body.is-scrubbing * { cursor: grabbing !important; user-selec
   </div>
   <div class="stage" id="stage">
     <div class="phone" id="phone">
-      <span class="rec" id="rec" aria-hidden="true"></span>
-      <div class="phone__veil" id="veil">Loading the prototype…</div>
+      <div class="phone__veil" id="veil" role="status">Loading…</div>
     </div>
   </div>
-  <div class="card device"><h3>Device</h3><p id="deviceLabel">Custom (375x812 @3x)</p></div>
   <aside class="card insp" id="insp" aria-live="polite"></aside>
   <div class="ctrl">
     <button id="play" aria-label="Play"><svg id="playIco" width="16" height="18" viewBox="0 0 16 18"><path d="M1 1.5v15L15 9z" fill="currentColor"/></svg></button>
@@ -318,12 +325,11 @@ body.is-scrubbing, body.is-scrubbing * { cursor: grabbing !important; user-selec
       <div class="tl__scale" id="scale"></div>
     </div>
     <div class="tl__rows" id="rows"></div>
-    <div class="lane" id="lane"><div class="buf" id="buf"></div><div class="head" id="head"><button class="grip" id="grip" aria-label="Playhead — drag to scrub, arrow keys step a frame"></button><i class="head__line" id="headLine" aria-hidden="true"></i></div></div>
+    <div class="lane" id="lane"><div class="head" id="head"><button class="grip" id="grip" aria-label="Playhead — drag to scrub, arrow keys step a frame"></button><i class="head__line" id="headLine" aria-hidden="true"></i></div></div>
   </div>
   <p class="foot">
     <span class="legend"><i style="background:var(--delay)"></i>delay</span>
     <span class="legend"><i style="background:var(--dur)"></i>duration</span>
-    <span class="legend"><i style="background:linear-gradient(180deg,#3e424d 0 30%,transparent 30% 40%,#3e424d 40% 70%,transparent 70% 80%,#3e424d 80%)"></i>staggered (one step per element)</span>
     <span class="legend"><i class="bar--approx" style="position:static"></i><span id="legendApprox">timing varies at runtime (≈)</span></span>
     <span class="legend"><i class="bar--repeat" style="position:static"></i>repeats</span>
     <span class="legend"><i style="width:2px;height:12px;background:var(--dur);border-radius:1px"></i>haptic pulse</span>
@@ -650,20 +656,24 @@ window.SPEC = (() => {
     rs.forEach((r) => { if (r.grp || r.scene != null || !r.sel) return; const e = m.get(r.layer) || { sels: new Set(), n: 0 }; e.sels.add(r.sel); e.n++; m.set(r.layer, e); });
     return [...m.entries()]; };
   const LAYER_ICO = '<svg class="tree__ico" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2.5" y="2.5" width="11" height="11" rx="1" stroke="currentColor" stroke-width="1.3" stroke-dasharray="2.2 1.8"/></svg>';
+  let treeOpenedFor = null, treeOpenedAt = 0;                   // the tree animates in when its scene opens, not on every selection
   function renderFlow() {
+    if (treeOpenedFor !== sc) { treeOpenedFor = sc; treeOpenedAt = performance.now(); }
+    const fresh = performance.now() - treeOpenedAt < 300;
     $('flow').innerHTML = SCENES.map((s) => {
       const len = s.overview ? sceneEnd(overview(v).rows) : sceneEnd(s.rows(v));
       const kids = s.id === sc && !s.overview ? layersOf(rows) : [];
-      return `<li${kids.length ? ' class="is-open"' : ''}><button data-s="${s.id}" aria-pressed="${s.id === sc && !layerFilter}" aria-current="${s.id === sc}"${kids.length ? ' aria-expanded="true"' : ''}><span class="n">${String(s.id).padStart(2, '0')}</span>
+      const curLayer = view === 'track' && rows[selected] ? rows[selected].layer : null;
+      return `<li${kids.length ? ' class="is-open"' : ''}><button data-s="${s.id}" aria-pressed="${s.id === sc && view === 'scene'}" aria-current="${s.id === sc}"${kids.length ? ' aria-expanded="true"' : ''}><span class="n">${String(s.id).padStart(2, '0')}</span>
         <span class="nm">${s.name}${s.varies ? '<span class="tag tag--warm">varies</span>' : ''}</span><span class="len">${fmtS(len)}</span>
-        <span class="tr">${s.summary || s.trig}</span></button>${kids.length ? `
-        <ul class="tree" role="group" aria-label="Layers in ${esc(s.name)}">${kids.map(([l, e]) => `<li><button data-l="${esc(l)}" aria-pressed="${layerFilter === l}">${LAYER_ICO}<span class="tree__nm">${l}</span><span class="tree__n">${e.n}</span></button></li>`).join('')}</ul>` : ''}</li>`;
+</button>${kids.length ? `
+        <ul class="tree${fresh ? ' is-new' : ''}" role="group" aria-label="Layers in ${esc(s.name)}">${kids.map(([l, e]) => `<li><button data-l="${esc(l)}" aria-pressed="${view === 'layer' && layerView === l}"${curLayer === l ? ' data-cur' : ''}>${LAYER_ICO}<span class="tree__nm">${l}</span><span class="tree__n">${e.n}</span></button></li>`).join('')}</ul>` : ''}</li>`;
     }).join('');
   }
   const pct = (ms) => `${(ms / END) * 100}%`;
   function bars(r) {
     const lbl = (ms) => (ms / END) * 1000 > 34;
-    const tight = (r.stagger || r.marks) && rowEnd(r) / END > 0.8;
+    const tight = r.marks && rowEnd(r) / END > 0.8;
     const sum = r.stagger ? `${fmtS(r.dur)} · ×${r.stagger.n} / ${r.stagger.step}ms`
       : r.marks && r.ease.kind === 'haptic' ? `${r.marks.length > 1 ? `×${r.marks.length} · ` : ''}${r.ease.style}${r.ease.intensity ? ` @${r.ease.intensity}` : ''}`
       : r.marks ? (r.marks.length > 1 ? `×${r.marks.length} · ${r.ease.ms}ms each` : `${r.ease.ms}ms`) : '';
@@ -672,18 +682,35 @@ window.SPEC = (() => {
       h += r.marks.map((m) => `<div class="bar bar--mark" style="left:${pct(m)}"></div>`).join('');
       if (!tight) h += `<span class="after" style="left:${pct(Math.max(...r.marks))}">${sum}</span>`;
     } else if (r.stagger) {
-      const { n, step } = r.stagger, hh = 100 / n;
-      for (let k = 0; k < n; k++) h += `<div class="bar bar--dur bar--step" style="left:${pct(r.delay + k * step)};width:${pct(r.dur)};top:${k * hh}%;height:${hh - 6 / n}%"></div>`;
-      if (!tight) h += `<span class="after" style="left:${pct(rowEnd(r))}">${sum}</span>`;
+      // one clean bar from the first element's start to the last one's end; the step count and gap
+      // ride in the label (inside when the bar has room, else just after it)
+      const span = rowEnd(r) - r.delay, roomy = span / END > 0.3;
+      h += `<div class="bar bar--dur" style="left:${pct(r.delay)};width:${pct(Math.min(span, END - r.delay))}">${roomy ? `<span>${sum}</span>` : ''}</div>`;
+      if (!roomy) h += `<span class="after" style="left:${pct(rowEnd(r))}">${sum}</span>`;
     } else {
       const cls = r.scene != null ? ' bar--scene' : r.approx ? ' bar--approx' : r.repeat ? ' bar--repeat' : '';
       h += `<div class="bar bar--dur${cls}" style="left:${pct(r.delay)};width:${pct(Math.min(r.dur, END - r.delay))}">${lbl(r.dur) ? `<span>${r.approx ? '≈' : ''}${fmtS(r.dur)}${r.repeat ? ' ↻' : ''}</span>` : ''}</div>`;
     }
     return h;
   }
+  // R20 · two properties on one layer with identical timing (delay, duration, stagger) are one row:
+  // "Scale · Move Y". Only within a group, never for haptics or marks; each keeps its own values in .parts
+  function mergeRows(src) {
+    const out = [], seen = new Map();
+    const key = (r) => [r.layer, r.sel, Math.round(r.delay), Math.round(r.dur), r.stagger ? `${r.stagger.n}/${r.stagger.step}/${r.stagger.order}` : '', !!r.approx, !!r.repeat].join('|');
+    src.forEach((r) => {
+      if (r.grp) { seen.clear(); out.push(r); return; }
+      if (r.marks || r.scene != null || r.ease.kind === 'haptic') { out.push(r); return; }
+      const k = key(r), m = seen.get(k);
+      if (!m) { const row = { ...r, parts: [r] }; seen.set(k, row); out.push(row); return; }
+      m.parts.push(r); m.prop = m.parts.map((x) => x.prop).join(' · ');
+    });
+    out.forEach((r) => { if (r.parts && r.parts.length < 2) delete r.parts; });
+    return out;
+  }
   function renderTimeline() {
     const S0 = SCENES[sc];
-    if (S0.overview) { const o = overview(v); rows = o.rows; beats = o.beats; } else { rows = S0.rows(v); beats = []; }
+    if (S0.overview) { const o = overview(v); rows = o.rows; beats = o.beats; } else { rows = mergeRows(S0.rows(v)); beats = []; }
     const last = sceneEnd(rows);
     const unit = last > 6000 ? 1000 : last > 2400 ? 500 : 100;
     END = Math.ceil((last + Math.max(60, last * 0.05)) / unit) * unit;
@@ -700,7 +727,7 @@ window.SPEC = (() => {
            <div class="row__lab">${ICON[r.icon]}<b>${r.scene != null ? `<em>${r.prop.padStart(2, '0')}</em>` : r.prop}</b><span>${r.layer}</span></div>
            <div class="row__trk">${bars(r)}</div></div>`).join('');
     applyFilter();
-    select(rows.findIndex((r) => !r.grp));
+    showScene();
     $('title').textContent = window.SPEC.title;
     $('back').href = PATHS[v];
     setHead(END); renderFlow();
@@ -730,53 +757,78 @@ window.SPEC = (() => {
       <line x1="${pad}" x2="${W - pad}" y1="${Y(0)}" y2="${Y(0)}" style="stroke:var(--line-strong)"/>
       <path d="${d}" fill="none" stroke="currentColor" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`;
   }
-  function select(i) {
-    if (i < 0 || !rows[i] || rows[i].grp) return;
-    selected = i; layerView = null;
-    document.querySelectorAll('.row').forEach((el) => el.setAttribute('aria-selected', String(+el.dataset.i === i)));
-    const r = rows[i], e = r.ease;
-    if (r.scene != null) {
-      const sr = SCENES[r.scene].rows(v).filter((x) => !x.grp);
-      $('insp').innerHTML = `<h3>${String(r.scene).padStart(2, '0')} ${r.layer}</h3><p class="insp__sub">${SCENES[r.scene].trig}</p>
-        <dl><dt>Starts</dt><dd>${fmtMs(r.delay)}</dd><dt>Length</dt><dd>${fmtMs(r.dur)}</dd><dt>Tracks</dt><dd>${sr.length}</dd>
-        <dt>Layers</dt><dd>${[...new Set(sr.map((x) => x.layer))].join(', ')}</dd></dl>
-        <button class="insp__go" data-go="${r.scene}">Open scene ${String(r.scene).padStart(2, '0')} →</button>`;
-      highlight(null); return;
-    }
-    let ease = '', code = '';
+  /* ═══ inspector: one view per thing selected on the left — scene → layer → animation ═══
+     A breadcrumb ties it back to the Flow tree; values read like ProtoPie's, the label
+     beside the value and the value in the accent, grouped Values · Timing · Easing.    */
+  let view = 'scene';                                           // 'scene' | 'layer' | 'track'
+  const nn = (n) => String(n).padStart(2, '0');
+  const kv = (items) => `<dl class="kv">${items.filter(Boolean).map(([k, val, wide]) => `<div${wide ? ' class="wide"' : ''}><dt>${k}</dt><dd>${val}</dd></div>`).join('')}</dl>`;
+  const sec = (title, inner, count) => `<section class="isec"><p class="isec__h">${title}${count != null ? `<span class="count">${count}</span>` : ''}</p>${inner}</section>`;
+  const crumb = (...parts) => `<p class="insp__crumb">${parts.filter(Boolean).map((x) => `<span>${x}</span>`).join('<i aria-hidden="true">›</i>')}</p>`;
+  const sceneCrumb = () => `${nn(sc)} ${SCENES[sc].name}`;
+  function easeOf(r) {                                          // → { name, items, code }
+    const e = r.ease;
     if (e.kind === 'spring') {
       const s = SPR[e.k], st = springStats(e);
-      ease = `<dt>Easing</dt><dd>Spring<span class="tag">${s.name}</span></dd>
-        <dt>Stiffness</dt><dd>${(s.w * s.w).toFixed(2)}</dd><dt>Damping</dt><dd>${(2 * s.z * s.w).toFixed(2)}</dd><dt>Mass</dt><dd>1</dd>
-        <dt>ω · ζ</dt><dd>${s.w} rad/s · ${s.z}</dd>
-        ${e.v0 ? `<dt>Initial velocity</dt><dd>${e.v0} px/s</dd>` : ''}
-        <dt>Overshoot</dt><dd>${st.overshoot < 0.05 ? 'none' : st.overshoot.toFixed(1) + '%'}</dd>
-        <dt>Within 1% at</dt><dd>${fmtMs(st.settle)}</dd>
-        <dt>Driven</dt><dd>${r.driver === 'frame' ? 'per frame (rAF)' : 'sampled WAAPI keyframes'}</dd>`;
-      code = `stiffness ${(s.w * s.w).toFixed(2)} · damping ${(2 * s.z * s.w).toFixed(2)} · mass 1 — ${s.src}`;
-    } else if (e.kind === 'curve') {
-      ease = `<dt>Easing</dt><dd>Curve<span class="tag">${CURVE[e.k].name}</span></dd>`; code = CURVE[e.k].fn;
-    } else if (e.kind === 'custom') {
-      ease = `<dt>Easing</dt><dd>${e.label}<span class="tag">${e.tag}</span></dd>` + (e.info || []).map(([k, val]) => `<dt>${k}</dt><dd>${val}</dd>`).join('');
-      code = e.code || '';
-    } else if (e.kind === 'haptic') {
-      ease = `<dt>Type</dt><dd>Haptic<span class="tag">${e.style}${e.intensity ? ` @${e.intensity}` : ''}</span></dd><dt>iOS</dt><dd>${e.gen}</dd>
-        <dt>Android</dt><dd>vibrate(${e.vibe})</dd><dt>iOS Safari</dt><dd>native switch toggle${e.name === 'success' ? ' ×2' : ''}</dd>
-        ${r.marks.length > 1 ? `<dt>Pulses</dt><dd>${r.marks.map((m) => Math.round(m)).join(', ')} ms</dd>` : ''}`;
-      code = `${e.call} → webkit.messageHandlers.haptic.postMessage(${JSON.stringify(e.intensity ? { type: e.style, intensity: e.intensity } : e.style)})`;
+      return { name: `Spring<span class="tag">${s.name}</span>`, code: '',
+        items: [['Stiffness', (s.w * s.w).toFixed(2)], ['Damping', (2 * s.z * s.w).toFixed(2)], ['Overshoot', st.overshoot < 0.05 ? 'none' : st.overshoot.toFixed(1) + '%'],
+          ['Settles', fmtMs(st.settle)], ['ω · ζ', `${s.w} rad/s · ${s.z}`, true], e.v0 && ['Initial velocity', `${e.v0} px/s`, true]] };
     }
-    $('insp').innerHTML = `<h3>${r.prop} <span style="font-weight:400;color:var(--ink-2)">— ${r.layer}</span></h3>
-      <p class="insp__sub"><code>${r.sel}</code></p>
-      ${plot(r)}
-      <dl><dt>From → To</dt><dd>${r.from} → ${r.to}</dd>
-        <dt>Delay</dt><dd>${r.approx ? '≈ ' : ''}${fmtMs(r.delay)}</dd>
-        <dt>Duration</dt><dd>${fmtMs(r.dur)}${r.repeat ? ' · repeats' : ''}</dd>
-        ${r.stagger ? `<dt>Stagger</dt><dd>×${r.stagger.n} · ${r.stagger.step}ms · ${r.stagger.order}</dd>` : ''}
-        <dt>Ends</dt><dd>${r.approx ? '≈ ' : ''}${fmtMs(rowEnd(r))}</dd></dl>
-      <hr /><dl>${ease}</dl>
-      <code class="insp__code">${code}</code>
-      ${r.note ? `<p class="insp__note">${r.note}</p>` : ''}`;
-    highlight(r.sel);
+    if (e.kind === 'curve') return { name: `Curve<span class="tag">${CURVE[e.k].name}</span>`, items: [], code: CURVE[e.k].fn };
+    if (e.kind === 'custom') return { name: `${e.label}<span class="tag">${e.tag}</span>`, items: (e.info || []).map(([k, val]) => [k, val]), code: e.code || '' };
+    if (e.kind === 'haptic') return { name: `Haptic<span class="tag">${e.style}${e.intensity ? ` @${e.intensity}` : ''}</span>`,
+      items: [['iOS', e.gen, true], ['Android', `vibrate(${e.vibe})`, true], ['iOS Safari', `native switch toggle${e.name === 'success' ? ' ×2' : ''}`, true],
+        r.marks.length > 1 && ['Pulses', `${r.marks.map((m) => Math.round(m)).join(', ')} ms`, true]],
+      code: `${e.call} → webkit.messageHandlers.haptic.postMessage(${JSON.stringify(e.intensity ? { type: e.style, intensity: e.intensity } : e.style)})` };
+    return { name: '', items: [], code: '' };
+  }
+  const easeSec = (r, title) => { const b = easeOf(r), items = b.items.filter(Boolean);
+    return sec(title || (r.ease.kind === 'haptic' ? 'Feedback' : 'Easing'),
+      `${b.name ? `<p class="isec__name">${b.name}</p>` : ''}${plot(r)}${items.length ? kv(items) : ''}${b.code ? `<code class="insp__code">${b.code}</code>` : ''}`); };
+  const list = (items) => `<ol class="anims">${items.join('')}</ol>`;
+  function clearRowSel() { document.querySelectorAll('.row').forEach((el) => el.setAttribute('aria-selected', 'false')); }
+
+  // scene view — what is selected when a scene is picked in the Flow list
+  function showScene() {
+    view = 'scene'; layerView = null; selected = -1; clearRowSel();
+    const S0 = SCENES[sc], len = fmtS(sceneEnd(rows));
+    if (S0.overview) {
+      const scs = rows.filter((r) => r.scene != null);
+      $('insp').innerHTML = `<h3>${S0.name}</h3>
+        ${sec('Summary', kv([['Length', len], ['Scenes', scs.length]]))}
+        ${sec('Scenes', list(scs.map((r) => `<li><button data-go="${r.scene}"><span class="n">${nn(r.scene)}</span><span class="anims__main"><b>${r.layer}</b></span><span class="anims__t">${fmtS(r.dur)}</span></button></li>`)), scs.length)}`;
+    } else {
+      const ls = layersOf(rows), n = rows.filter((r) => !r.grp).length;
+      $('insp').innerHTML = `<h3>${S0.name}${S0.varies ? '<span class="tag tag--warm">varies</span>' : ''}</h3>
+        ${sec('Summary', kv([['Length', len], ['Layers', ls.length], ['Animations', n]]))}
+        ${sec('Layers', list(ls.map(([l, e]) => `<li><button data-l="${esc(l)}">${LAYER_ICO}<span class="anims__main"><b>${l}</b></span><span class="anims__t">${e.n}</span></button></li>`)), ls.length)}`;
+    }
+    highlight(null); renderFlow();
+  }
+
+  // animation view — a timeline row
+  function select(i) {
+    if (i < 0 || !rows[i] || rows[i].grp) return;
+    selected = i; layerView = null; view = 'track';
+    document.querySelectorAll('.row').forEach((el) => el.setAttribute('aria-selected', String(+el.dataset.i === i)));
+    const r = rows[i];
+    if (r.scene != null) {                                      // a scene, on the Overview timeline
+      const sr = SCENES[r.scene].rows(v).filter((x) => !x.grp);
+      $('insp').innerHTML = `${crumb(sceneCrumb())}<h3>${nn(r.scene)} ${r.layer}</h3>
+        ${sec('Summary', kv([['Starts', fmtMs(r.delay)], ['Length', fmtMs(r.dur)], ['Animations', sr.length], ['Layers', [...new Set(sr.map((x) => x.layer))].join(', '), true]]))}
+        <button class="insp__go" data-go="${r.scene}">Open scene ${nn(r.scene)} →</button>`;
+      highlight(null); renderFlow(); return;
+    }
+    const parts = r.parts || [r], same = parts.every((x) => JSON.stringify(x.ease) === JSON.stringify(parts[0].ease));
+    const values = r.parts ? kv(parts.map((x) => [x.prop, `${x.from} → ${x.to}`, true])) : kv([['From', r.from], ['To', r.to]]);
+    const timing = kv([['Delay', `${r.approx ? '≈ ' : ''}${fmtMs(r.delay)}`], ['Duration', `${fmtMs(r.dur)}${r.repeat ? ' · repeats' : ''}`],
+      ['Ends', `${r.approx ? '≈ ' : ''}${fmtMs(rowEnd(r))}`], r.stagger && ['Stagger', `×${r.stagger.n} · ${r.stagger.step}ms · ${r.stagger.order}`, true]]);
+    $('insp').innerHTML = `${crumb(sceneCrumb(), r.layer)}<h3>${r.prop}</h3>
+      ${r.from === '—' ? '' : sec('Values', values)}
+      ${sec('Timing', timing)}
+      ${same ? easeSec(parts[0]) : parts.map((x) => easeSec(x, `Easing · ${x.prop}`)).join('')}
+`;
+    highlight(r.sel); renderFlow();
   }
 
   /* ═══ layer view: what ProtoPie shows for a selected layer, measured live ═══
@@ -798,22 +850,20 @@ window.SPEC = (() => {
     const box = $('layerProps'); if (!box || !layerView) return;
     const m = measure(layerView), shown = Math.max(0, lastShown);
     const cell = (k, val) => `<div><dt>${k}</dt><dd>${val}</dd></div>`;
-    if (!m) { box.innerHTML = cell('X', '…') + cell('Y', '…') + cell('Width', '…') + cell('Height', '…') + cell('Opacity', '…') + cell('Radius', '…'); $('layerAt').textContent = 'Loading the prototype…'; return; }
+    if (!m) { box.innerHTML = cell('X', '…') + cell('Y', '…') + cell('Width', '…') + cell('Height', '…') + cell('Opacity', '…') + cell('Radius', '…'); $('layerAt').textContent = 'Loading…'; return; }
     if (!m.count) { box.innerHTML = ''; $('layerAt').textContent = `Not on screen at ${fmtS(shown)}`; return; }
     box.innerHTML = cell('X', num(m.x)) + cell('Y', num(m.y)) + cell('Width', num(m.w)) + cell('Height', num(m.h)) + cell('Opacity', `${num(m.o * 100)}%`) + cell('Radius', m.r);
     $('layerAt').textContent = `At ${fmtS(shown)} on the playhead · pt${m.count > 1 ? ` · first of ${m.count} elements` : ''}`;
   }
   function showLayer(name) {
-    layerFilter = name; layerView = name; selected = -1; propsAt = -1;
-    document.querySelectorAll('.row').forEach((el) => el.setAttribute('aria-selected', 'false'));
-    applyFilter(); renderFlow();
+    layerFilter = name; layerView = name; view = 'layer'; selected = -1; propsAt = -1; clearRowSel();
+    applyFilter();
     const tracks = rows.map((r, i) => [r, i]).filter(([r]) => !r.grp && r.scene == null && r.layer === name);
-    $('insp').innerHTML = `<p class="insp__eyebrow">Layer</p><h3>${name}</h3>
-      <dl class="props" id="layerProps"></dl><p class="insp__cap" id="layerAt"></p>
-      <hr /><p class="insp__eyebrow">Animations <span class="count">${tracks.length}</span></p>
-      <ol class="anims">${tracks.map(([r, i]) => `<li><button data-i="${i}">${ICON[r.icon]}<span class="anims__main"><b>${r.prop}</b><span>${r.from} → ${r.to}</span></span>
-        <span class="anims__t">${r.approx ? '≈' : ''}${fmtMs(r.delay)}<br>${fmtMs(r.dur)}</span></button></li>`).join('')}</ol>`;
-    fillProps(); highlight(layerSel(name));
+    $('insp').innerHTML = `${crumb(sceneCrumb(), 'Layer')}<h3>${name}</h3>
+      ${sec('Properties', `<dl class="kv" id="layerProps"></dl><p class="insp__cap" id="layerAt"></p>`)}
+      ${sec('Animations', list(tracks.map(([r, i]) => `<li><button data-i="${i}">${ICON[r.icon]}<span class="anims__main"><b>${r.prop}</b><span>${(r.parts || [r]).map((x) => `${x.from} → ${x.to}`).join(' · ')}</span></span>
+        <span class="anims__t">${r.approx ? '≈' : ''}${fmtMs(r.delay)}<br>${fmtMs(r.dur)}</span></button></li>`)), tracks.length)}`;
+    fillProps(); highlight(layerSel(name)); renderFlow();
   }
 
   /* ═══ live preview — the real prototype on a virtual clock ═══════════════
@@ -902,7 +952,7 @@ window.SPEC = (() => {
      value at T. So the screen follows the playhead within the same frame,
      forwards or backwards, at any speed — playback and scrubbing are one
      lookup. Recording runs faster than real time, time-sliced so the UI stays
-     smooth; playback can start while it is still recording.                    */
+     smooth; a plain "Loading…" covers the phone until it is done.              */
   let gen = 0, mode = 'idle', REC = null, playT = 0, headT = null, lastShown = -1, stateCur = '', stateEnd = '';
   let hlBox = null, hlSel = null, hlAt = -1;
   const disp = () => (REC && REC.disp ? REC.disp : null);
@@ -1013,14 +1063,12 @@ window.SPEC = (() => {
     REC = rec; hlBox = null; lastShown = -1;
     df.classList.add('is-front');
     [...phone.querySelectorAll('iframe.is-front')].forEach((f) => { if (f !== df) f.remove(); });
-    $('veil').hidden = true;
     // fire the trigger at Start and record
     capture(0);
     const t0 = eng.now();
     if (SCENES[sc].overview) beats.forEach((bt) => w.setTimeout(() => { try { bt.fire(d, w); } catch (_) {} }, bt.at));
     else await FIRE[sc](d, w);
     await flush();
-    if (mode === 'idle') setMode('playing');
     const dt = END > 6000 ? 1000 / 60 : 1000 / 120;
     let slice = performance.now();
     for (let t = dt; t <= END + dt / 2 && g === gen; t += dt) {
@@ -1029,7 +1077,7 @@ window.SPEC = (() => {
       if (performance.now() - slice > 10) { await nextFrame(); slice = performance.now(); }   // keep the page responsive
     }
     mo.disconnect();
-    if (g === gen) { rec.upTo = END; rec.done = true; }
+    if (g === gen) { rec.upTo = END; rec.done = true; $('veil').hidden = true; if (mode === 'idle') setMode('playing'); }   // ready: lift the veil and play from 0
     fr.f.remove();                                              // the recording is all the display needs
   }
 
@@ -1062,7 +1110,6 @@ window.SPEC = (() => {
   function setMode(m) {
     mode = m;
     $('playIco').innerHTML = m === 'playing' ? '<rect x="2" y="1.5" width="4" height="15" rx="1" fill="currentColor"/><rect x="10" y="1.5" width="4" height="15" rx="1" fill="currentColor"/>' : '<path d="M1 1.5v15L15 9z" fill="currentColor"/>';
-    $('rec').classList.toggle('is-on', m === 'playing');
     $('play').setAttribute('aria-label', m === 'playing' ? 'Pause' : 'Play');
   }
   function paint() {
@@ -1070,7 +1117,6 @@ window.SPEC = (() => {
     const shown = Math.min(T, up);
     if (shown !== lastShown) { const c0 = performance.now(); applyAt(shown); if (window.__spec) (window.__spec.cost ||= []).push(performance.now() - c0); lastShown = shown; hlAt = -1; }
     setHead(T);
-    $('buf').style.width = `${(up / END) * 100}%`;
     // fixed-width readout: always two decimals, in a slot as wide as the total, so the bar never resizes
     const cur = `${(Math.min(T, END) / 1000).toFixed(2)}s`, end = `${(END / 1000).toFixed(2)}s`;
     if (cur !== stateCur) { $('stateCur').textContent = cur; stateCur = cur; }
@@ -1098,12 +1144,14 @@ window.SPEC = (() => {
   async function rebuild() {                                    // scene or iteration changed: record it
     const g = ++gen; setMode('idle'); playT = 0; headT = null; REC = null; lastShown = -1;
     [...phone.querySelectorAll('iframe:not(.is-front)')].forEach((f) => f.remove());
-    $('veil').hidden = !phone.querySelector('iframe.is-front'); $('veil').textContent = 'Recording the scene…';
-    setHead(0); $('buf').style.width = '0%';
+    $('veil').hidden = false; $('veil').textContent = 'Loading…';
+    setHead(0);
+    stateCur = '0.00s'; $('stateCur').textContent = stateCur;              // the readout starts at 0 with the new scene
+    stateEnd = `${(END / 1000).toFixed(2)}s`; $('stateEnd').textContent = stateEnd; $('stateCur').style.minWidth = `${stateEnd.length}ch`;
     try { await record(g); } catch (e) { if (g === gen) { $('veil').hidden = false; $('veil').textContent = 'Preview unavailable — reload to try again.'; } }
   }
   function togglePlay() {
-    if (!REC) return;
+    if (!REC || !REC.done) return;                              // still loading
     if (mode === 'playing') { setMode('paused'); return; }
     if (playT >= END - 1) playT = 0;
     setMode('playing');
@@ -1151,17 +1199,18 @@ window.SPEC = (() => {
     const l = e.target.closest('button[data-l]'); if (l) { showLayer(l.dataset.l); return; }
     const b = e.target.closest('button[data-s]'); if (!b) return;
     if (+b.dataset.s !== sc) { setScene(+b.dataset.s); return; }
-    if (layerFilter) { layerFilter = ''; applyFilter(); renderFlow(); select(rows.findIndex((r) => !r.grp)); }   // back to the whole scene
+    layerFilter = ''; applyFilter(); showScene();             // back to the whole scene
   });
   $('insp').addEventListener('click', (e) => { const b = e.target.closest('[data-go]'); if (b) { setScene(+b.dataset.go); return; }
+    const l = e.target.closest('.anims button[data-l]'); if (l) { showLayer(l.dataset.l); return; }
     const t = e.target.closest('.anims button[data-i]'); if (t) select(+t.dataset.i); });
   $('rows').addEventListener('click', (e) => { const r = e.target.closest('.row'); if (!r || e.target.closest('.row__trk')) return;
-    if (layerFilter && rows[+r.dataset.i].layer !== layerFilter) { layerFilter = ''; applyFilter(); renderFlow(); }
+    if (layerFilter && rows[+r.dataset.i].layer !== layerFilter) { layerFilter = ''; applyFilter(); }
     select(+r.dataset.i); });
   $('rows').addEventListener('dblclick', (e) => { const r = e.target.closest('.row'); if (r && rows[+r.dataset.i].scene != null) setScene(rows[+r.dataset.i].scene); });
   $('rows').addEventListener('keydown', (e) => { const r = e.target.closest('.row'); if (r && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); select(+r.dataset.i); } });
   $('rows').addEventListener('mouseover', (e) => { const r = e.target.closest('.row'); if (r) highlight(rows[+r.dataset.i].sel); });
-  $('rows').addEventListener('mouseleave', () => { if (selected >= 0) highlight(rows[selected].sel); else if (layerView) highlight(layerSel(layerView)); });
+  $('rows').addEventListener('mouseleave', () => { highlight(view === 'track' && rows[selected] ? rows[selected].sel : view === 'layer' ? layerSel(layerView) : null); });
   $('play').addEventListener('click', () => togglePlay());
   $('speed').addEventListener('click', () => { speedIdx = (speedIdx + 1) % SPEEDS.length; $('speedLbl').textContent = `× ${SPEEDS[speedIdx]}`; });
   $('copy').addEventListener('click', async () => { try { await navigator.clipboard.writeText(location.href); $('copy').textContent = 'Copied'; } catch (_) { $('copy').textContent = 'Copy failed'; } setTimeout(() => ($('copy').textContent = 'Copy link'), 1400); });
@@ -1169,7 +1218,6 @@ window.SPEC = (() => {
 
   document.title = window.SPEC.title.replace(/ — .*/, '') + ' Spec';
   document.documentElement.style.setProperty('--pw', `${DW}px`); document.documentElement.style.setProperty('--ph', `${DH}px`);
-  if (window.SPEC.device && window.SPEC.device.label) $('deviceLabel').textContent = window.SPEC.device.label;
   if (window.SPEC.legend && window.SPEC.legend.approx) $('legendApprox').textContent = window.SPEC.legend.approx;
   renderTimeline(); fit(); rebuild();
 })();
