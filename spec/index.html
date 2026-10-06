@@ -110,7 +110,7 @@ svg { flex: none; }
 
 /* Primary button, md: ink fill, 14px medium, 14px corner. The one primary action on the page. */
 .copy, .insp__go { height: 36px; padding: 0 14px; border-radius: var(--r-control); background: var(--ink); color: var(--on-ink); font-size: var(--t-ui); font-weight: 500; flex: none; display: inline-flex; align-items: center; gap: 6px; }
-.copy { min-width: 104px; justify-content: center; }   /* "Copy link" ⇄ "Copied" without the button resizing */
+.copy { min-width: 88px; padding: 0 10px; justify-content: center; }   /* snug: 10px sides, wide enough for "✓ Copied" (68px) so the swap never resizes it */
 .copy svg { width: 15px; height: 15px; }
 
 /* ── canvas: the kit playground's dotted stage ── */
@@ -272,15 +272,15 @@ body.is-scrubbing, body.is-scrubbing * { cursor: grabbing !important; user-selec
 .legend { display: inline-flex; align-items: center; gap: 8px; }
 .legend i { display: inline-block; width: 18px; height: 8px; border-radius: 2px; }
 
-/* Toast, as the kit's: fixed 24px above the bottom, centred, ink pill, 14px medium. Arrives from the
-   edge it lives on (12px rise + fade, 200ms), leaves shorter and softer (6px, 120ms). */
-.toast { position: fixed; left: 0; right: 0; bottom: calc(24px + env(safe-area-inset-bottom)); z-index: 80; width: fit-content; max-width: calc(100% - 32px); margin: 0 auto;
+/* Toast, as the kit's: ink pill, 14px medium — top centre, inside the header band (its middle is empty).
+   Arrives from the edge it lives on (12px drop + fade, 200ms), leaves shorter and softer (6px up, 120ms). */
+.toast { position: fixed; left: 0; right: 0; top: calc(7px + env(safe-area-inset-top)); z-index: 80; width: fit-content; max-width: calc(100% - 32px); margin: 0 auto;
   display: flex; align-items: center; gap: 10px; padding: 10px 16px 10px 14px; border-radius: var(--r-control); background: var(--ink); color: var(--on-ink);
   font-size: var(--t-ui); font-weight: 500; line-height: 1.5; box-shadow: var(--sh-toast); cursor: default;
   transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out); }
-.toast svg { width: 16px; height: 16px; flex: none; color: var(--accent); }
-.toast.is-enter { opacity: 0; transform: translateY(12px); }
-.toast[data-closing] { opacity: 0; transform: translateY(6px); transition-duration: 120ms; pointer-events: none; }
+.toast svg { width: 16px; height: 16px; flex: none; color: var(--on-ink); }
+.toast.is-enter { opacity: 0; transform: translateY(-12px); }
+.toast[data-closing] { opacity: 0; transform: translateY(-6px); transition-duration: 120ms; pointer-events: none; }
 
 /* Hover lives in one place, behind a real pointer, so it never latches on touch. */
 @media (hover: hover) and (pointer: fine) {
