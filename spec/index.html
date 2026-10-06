@@ -37,6 +37,8 @@
   --draft: #96660b; --draft-bg: #fbf3e3;
   --accent: #ec642b;   /* the internal-tools orange — playhead, its trail, the record dot */
   --chart-1: #277fff;
+  --fn: #7c5cff;     /* easing function names, as ProtoPie colours them */
+  --live: #e5484d;   /* the value at the playhead */
 
   /* ── spec-sheet roles, mapped onto the kit ── */
   --canvas: color-mix(in oklab, #18191d 3%, #ffffff);
@@ -51,7 +53,7 @@
   --r-full: 999px;
 
   /* ── kit shadow ── */
-  --sh-card: 0 0 0 1px transparent, 0 1px 2px rgb(0 0 0 / .03), 0 16px 44px -24px rgb(0 0 0 / .18);
+  --sh-card: 0 1px 2px rgb(0 0 0 / .04);   /* floating cards: the hairline does the edge, the shadow only a whisper of lift */
   --sh-toast: 0 12px 32px -12px rgb(0 0 0 / .32);
   --sh-pill: 0 1px 2px rgb(0 0 0 / .06), 0 1px 1px rgb(0 0 0 / .04);
   --sh-device: 0 0 0 1px rgb(0 0 0 / .06), 0 1px 2px rgb(0 0 0 / .03), 0 24px 60px -24px rgb(0 0 0 / .35);
@@ -180,6 +182,12 @@ svg { flex: none; }
 /* code block: the kit's — Geist Mono 12.5 on the faintest wash, hairline, 14×16 padding */
 .insp__code { display: block; margin-top: 16px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--r-xl); background: var(--wash-2); font-family: var(--mono); font-size: 12.5px; line-height: 1.625; color: color-mix(in oklab, var(--ink) 90%, transparent); word-break: break-all; }
 .insp__go { margin-top: 20px; }
+/* easing expression, as ProtoPie writes it: FUNCTION(Arg value) */
+.x { font-family: var(--mono); font-size: var(--t-label); font-weight: 500; color: var(--fn); }
+.x .x-n { color: var(--accent); }
+.isec__h .tag { margin: 0; text-transform: none; letter-spacing: 0; }
+/* "Current" follows the playhead — in red, as ProtoPie marks it */
+.insp .kv dd .live { color: var(--live); }
 /* the layer's "at 0.8s on the playhead" caption */
 .insp__cap { margin: 12px 0 0; font-size: var(--t-caption); color: var(--muted); }
 .anims { list-style: none; margin: -4px 0 -10px;   /* the rows' own 10px padding stands in for the panel's bottom space */ padding: 0; display: flex; flex-direction: column; gap: 2px; }
@@ -784,7 +792,7 @@ window.SPEC = (() => {
     const X = (k) => pad + ((W - 2 * pad) * k) / N, Y = (y) => H - pad - ((H - 2 * pad) * (y - lo)) / (hi - lo);
     const d = ys.map((y, k) => `${k ? 'L' : 'M'}${X(k).toFixed(1)},${Y(y).toFixed(1)}`).join('');
     return `<svg class="insp__plot" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
-      <line x1="${pad}" x2="${W - pad}" y1="${Y(1)}" y2="${Y(1)}" style="stroke:var(--line-control)" stroke-dasharray="3 3"/>
+      <line x1="${pad}" x2="${W - pad}" y1="${Y(1)}" y2="${Y(1)}" style="stroke:var(--line-strong)"/>
       <line x1="${pad}" x2="${W - pad}" y1="${Y(0)}" y2="${Y(0)}" style="stroke:var(--line-strong)"/>
       <path d="${d}" fill="none" stroke="currentColor" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`;
   }
@@ -797,24 +805,50 @@ window.SPEC = (() => {
   const sec = (title, inner, count) => `<section class="isec"><p class="isec__h">${title}${count != null ? `<span class="count">${count}</span>` : ''}</p>${inner}</section>`;
   // the same header the Flow card uses: title, then an optional chip
   const head = (title, chip = '') => `<header class="card__head"><h3 class="card__title">${title}</h3>${chip}</header>`;
-  function easeOf(r) {                                          // → { name, items, code }
+  // ProtoPie-style easing: FUNCTION(Arg value, …) — the function in violet, the numbers in the accent
+  const xfn = (name, args = []) => `<span class="x"><span class="x-fn">${name}</span>${args.length ? `(${args.map(([k, val]) => `${k ? `${k} ` : ''}<span class="x-n">${val}</span>`).join(', ')})` : ''}</span>`;
+  const CURVE_X = { lin: 'LINEAR', out: 'EASE-OUT', io: 'EASE-IN-OUT' };
+  function exprOf(r) {
+    const e = r.ease;
+    if (e.kind === 'spring') { const s = SPR[e.k]; return xfn('SPRING', [['Tension', (s.w * s.w).toFixed(2)], ['Friction', (2 * s.z * s.w).toFixed(2)]]); }
+    if (e.kind === 'curve') return CURVE_X[e.k] ? xfn(CURVE_X[e.k]) : xfn('CURVE', [['', CURVE[e.k].name.replace(/\s*\(.*\)$/, '')]]);
+    if (e.kind === 'custom') return xfn('CUSTOM', [['', e.tag || e.label]]);
+    if (e.kind === 'haptic') return xfn('HAPTIC', [['', `${e.style}${e.intensity ? ` @${e.intensity}` : ''}`]]);
+    return '';
+  }
+  // the value at the playhead, for numeric from → to (same unit); null when it isn't a number
+  const numUnit = (t) => { const m = String(t).replace(/−/g, '-').trim().match(/^(-?\d*\.?\d+)\s*(px|%|deg|ms|s)?$/); return m ? [+m[1], m[2] || ''] : null; };
+  function currentOf(x, T) {
+    const a = numUnit(x.from), b = numUnit(x.to), E = easeFn(x); if (!a || !b || a[1] !== b[1] || !E) return null;
+    let u = (T - x.delay) / x.dur; u = x.repeat && u > 1 ? u % 1 : Math.min(1, Math.max(0, u));
+    if (u >= 1 && !x.repeat) return x.to.replace(/−/g, '-');
+    const pr = u <= 0 ? 0 : E.f(u * E.span);
+    return `${(Math.round((a[0] + (b[0] - a[0]) * pr) * 10) / 10).toString().replace(/^-0$/, '0')}${a[1]}`;
+  }
+  const live = (i, k = 0) => `<span class="live" data-live="${i}" data-part="${k}">—</span>`;
+  function fillLive() {
+    const T = Math.max(0, lastShown);
+    document.querySelectorAll('#insp [data-live]').forEach((el) => { const r = rows[+el.dataset.live]; if (!r) return;
+      const x = (r.parts || [r])[+el.dataset.part]; el.textContent = currentOf(x, T) ?? '—'; });
+  }
+  function easeOf(r) {                                          // → { name, tag, items, code }
     const e = r.ease;
     if (e.kind === 'spring') {
       const s = SPR[e.k], st = springStats(e);
-      return { name: `Spring<span class="tag">${s.name}</span>`, code: '',
-        items: [['Stiffness', (s.w * s.w).toFixed(2)], ['Damping', (2 * s.z * s.w).toFixed(2)], ['Overshoot', st.overshoot < 0.05 ? 'none' : st.overshoot.toFixed(1) + '%'],
+      return { name: exprOf(r), tag: s.name, code: '',
+        items: [['Overshoot', st.overshoot < 0.05 ? 'none' : st.overshoot.toFixed(1) + '%'],
           ['Settles', fmtMs(st.settle)], ['ω · ζ', `${s.w} rad/s · ${s.z}`, true], e.v0 && ['Initial velocity', `${e.v0} px/s`, true]] };
     }
-    if (e.kind === 'curve') return { name: `Curve<span class="tag">${CURVE[e.k].name}</span>`, items: [], code: CURVE[e.k].fn };
-    if (e.kind === 'custom') return { name: `${e.label}<span class="tag">${e.tag}</span>`, items: (e.info || []).map(([k, val]) => [k, val]), code: e.code || '' };
-    if (e.kind === 'haptic') return { name: `Haptic<span class="tag">${e.style}${e.intensity ? ` @${e.intensity}` : ''}</span>`,
+    if (e.kind === 'curve') return { name: exprOf(r), tag: CURVE[e.k].name, items: [], code: CURVE[e.k].fn };
+    if (e.kind === 'custom') return { name: exprOf(r), tag: e.label, items: (e.info || []).map(([k, val]) => [k, val]), code: e.code || '' };
+    if (e.kind === 'haptic') return { name: exprOf(r), tag: '',
       items: [['iOS', e.gen, true], ['Android', `vibrate(${e.vibe})`, true], ['iOS Safari', `native switch toggle${e.name === 'success' ? ' ×2' : ''}`, true],
         r.marks.length > 1 && ['Pulses', `${r.marks.map((m) => Math.round(m)).join(', ')} ms`, true]],
       code: `${e.call} → webkit.messageHandlers.haptic.postMessage(${JSON.stringify(e.intensity ? { type: e.style, intensity: e.intensity } : e.style)})` };
     return { name: '', items: [], code: '' };
   }
   const easeSec = (r, title) => { const b = easeOf(r), items = b.items.filter(Boolean);
-    return sec(title || (r.ease.kind === 'haptic' ? 'Feedback' : 'Easing'),
+    return sec(`${title || (r.ease.kind === 'haptic' ? 'Feedback' : 'Easing')}${b.tag ? `<span class="tag">${b.tag}</span>` : ''}`,
       `${b.name ? `<p class="isec__name">${b.name}</p>` : ''}${plot(r)}${items.length ? kv(items) : ''}${b.code ? `<code class="insp__code">${b.code}</code>` : ''}`); };
   const list = (items) => `<ol class="anims">${items.join('')}</ol>`;
   function clearRowSel() { document.querySelectorAll('.row').forEach((el) => el.setAttribute('aria-selected', 'false')); }
@@ -851,15 +885,14 @@ window.SPEC = (() => {
       highlight(null); renderFlow(); return;
     }
     const parts = r.parts || [r], same = parts.every((x) => JSON.stringify(x.ease) === JSON.stringify(parts[0].ease));
-    const values = r.parts ? kv(parts.map((x) => [x.prop, `${x.from} → ${x.to}`, true])) : kv([['From', r.from], ['To', r.to]]);
+    const values = r.parts ? kv(parts.flatMap((x, k) => [[x.prop, `${x.from} → ${x.to}`, true], [`${x.prop} now`, live(i, k), true]])) : kv([['From', r.from], ['To', r.to], ['Current', live(i)]]);
     const timing = kv([['Delay', `${r.approx ? '≈ ' : ''}${fmtMs(r.delay)}`], ['Duration', `${fmtMs(r.dur)}${r.repeat ? ' · repeats' : ''}`],
       ['Ends', `${r.approx ? '≈ ' : ''}${fmtMs(rowEnd(r))}`], r.stagger && ['Stagger', `×${r.stagger.n} · ${r.stagger.step}ms · ${r.stagger.order}`, true]]);
     $('insp').innerHTML = `${head(`${r.prop}<small>${r.layer}</small>`)}
       ${r.from === '—' ? '' : sec('Values', values)}
       ${sec('Timing', timing)}
-      ${same ? easeSec(parts[0]) : parts.map((x) => easeSec(x, `Easing · ${x.prop}`)).join('')}
-`;
-    highlight(r.sel); renderFlow();
+      ${same ? easeSec(parts[0]) : parts.map((x) => easeSec(x, `Easing · ${x.prop}`)).join('')}`;
+    fillLive(); highlight(r.sel); renderFlow();
   }
 
   /* ═══ layer view: what ProtoPie shows for a selected layer, measured live ═══
@@ -889,12 +922,9 @@ window.SPEC = (() => {
   function showLayer(name) {
     layerFilter = name; layerView = name; view = 'layer'; selected = -1; propsAt = -1; clearRowSel();
     applyFilter();
-    const tracks = rows.map((r, i) => [r, i]).filter(([r]) => !r.grp && r.scene == null && r.layer === name);
     $('insp').innerHTML = `${head(name, '<span class="tag">Layer</span>')}
-      ${sec('Properties', `<dl class="kv" id="layerProps"></dl><p class="insp__cap" id="layerAt"></p>`)}
-      ${sec('Animations', list(tracks.map(([r, i]) => `<li><button data-i="${i}">${ICON[r.icon]}<span class="anims__main"><b>${r.prop}</b><span>${(r.parts || [r]).map((x) => `${x.from} → ${x.to}`).join(' · ')}</span></span>
-        <span class="anims__t">${r.approx ? '≈' : ''}${fmtMs(r.delay)}<br>${fmtMs(r.dur)}</span></button></li>`)), tracks.length)}`;
-    fillProps(); highlight(layerSel(name)); renderFlow();
+      ${sec('Layer properties', `<dl class="kv" id="layerProps"></dl><p class="insp__cap" id="layerAt"></p>`)}`;
+    fillProps(); fillLive(); highlight(layerSel(name)); renderFlow();
   }
 
   /* ═══ live preview — the real prototype on a virtual clock ═══════════════
@@ -1153,7 +1183,7 @@ window.SPEC = (() => {
     if (cur !== stateCur) { $('stateCur').textContent = cur; stateCur = cur; }
     if (end !== stateEnd) { $('stateEnd').textContent = end; $('stateCur').style.minWidth = `${end.length}ch`; stateEnd = end; }
     if (hlSel && hlAt !== shown) { highlight(hlSel); hlAt = shown; }
-    if (layerView && propsAt !== shown) { fillProps(); propsAt = shown; }
+    if (propsAt !== shown) { if (layerView) fillProps(); fillLive(); propsAt = shown; }
   }
   let lastTs = performance.now();
   function loop(ts) {
