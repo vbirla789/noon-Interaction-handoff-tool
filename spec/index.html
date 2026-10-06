@@ -159,7 +159,7 @@ svg { flex: none; }
 
 
 /* ── inspector: the kit playground's Props panel ── */
-.insp { right: var(--gut); top: var(--gut); width: var(--card-w); max-height: calc(100% - var(--gut) * 2); padding: 0 22px 24px; overflow: auto; scrollbar-width: none; }   /* hugs its content, capped at the canvas */
+.insp { right: var(--gut); top: var(--gut); width: var(--card-w); max-height: calc(100% - var(--gut) * 2); padding: 0 22px 20px; overflow: auto; scrollbar-width: none; }   /* hugs its content, capped at the canvas */
 /* the header stays put while the panel scrolls */
 .insp > .card__head { position: sticky; top: 0; z-index: 1; margin: 0 -22px; }
 .insp::-webkit-scrollbar { display: none; }
@@ -182,7 +182,7 @@ svg { flex: none; }
 .insp__go { margin-top: 20px; }
 /* the layer's "at 0.8s on the playhead" caption */
 .insp__cap { margin: 12px 0 0; font-size: var(--t-caption); color: var(--muted); }
-.anims { list-style: none; margin: -4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.anims { list-style: none; margin: -4px 0 -10px;   /* the rows' own 10px padding stands in for the panel's bottom space */ padding: 0; display: flex; flex-direction: column; gap: 2px; }
 .anims button { width: calc(100% + 24px); margin: 0 -12px; display: grid; grid-template-columns: 16px 1fr auto; gap: 12px; align-items: center; padding: 10px 12px; border-radius: var(--r-chip); text-align: left; }
 .anims svg { width: 15px; height: 15px; }
 .anims .tree__ico { width: 14px; height: 14px; color: var(--muted); }
@@ -193,7 +193,9 @@ svg { flex: none; }
 .anims__main span { font-family: var(--mono); font-size: var(--t-micro); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .anims__t { font-family: var(--mono); font-size: var(--t-micro); line-height: 1.5; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
 
-.stage { position: absolute; left: 50%; top: var(--stage-pad); bottom: var(--stage-pad); transform: translateX(-50%); display: grid; place-items: start center; }
+/* the phone's frame top-aligns with the floating cards (the frame is drawn ~4px outside the screen);
+   the room it gives up at the top goes to the bottom, so the phone keeps its size */
+.stage { position: absolute; left: 50%; top: calc(var(--gut) + 4px); bottom: calc(var(--stage-pad) * 2 - var(--gut) - 4px); transform: translateX(-50%); display: grid; place-items: start center; }
 /* the device is rendered content, not chrome: it keeps its own square edge and white screen */
 /* The device frame, as in the A/B library: a solid ink outline, its thickness a fraction of the
    screen's height (÷152, ≈5.3pt on 812) so it stays in proportion when the phone is scaled to fit. */
@@ -217,8 +219,8 @@ svg { flex: none; }
 
 /* ── timeline ── */
 .tlwrap { overflow-x: auto; border-top: 1px solid var(--line); background: var(--bg); }
-.tl { position: relative; min-width: 940px; padding: var(--tl-pt) var(--tl-pr) var(--tl-pb) 0; }
-.tl__ruler { display: grid; grid-template-columns: var(--lab) 1fr; align-items: center; height: 40px; }
+.tl { position: relative; min-width: 940px; padding: 0 var(--tl-pr) var(--tl-pb) 0; }
+.tl__ruler { position: sticky; top: 0; z-index: 2; display: grid; grid-template-columns: var(--lab) 1fr; align-items: center; height: calc(40px + var(--tl-pt)); padding-top: var(--tl-pt); background: var(--bg); }   /* pinned while the rows scroll; carries the top padding so it keeps its air when pinned */   /* pinned while the rows scroll */
 .tl__start { height: 32px; margin-left: 20px; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 10px; background: var(--wash-3); border-radius: var(--r-chip); font-size: var(--t-label); font-weight: 600; white-space: nowrap; overflow: hidden; min-width: 0; }
 .tl__start svg { width: 13px; height: 12px; }
 .tl__start small { font-size: var(--t-label); color: var(--ink); font-weight: 400; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
@@ -258,11 +260,13 @@ svg { flex: none; }
 /* playhead: the one orange on the page, used for "now" */
 .head { position: absolute; top: 2px; bottom: 0; width: 0; pointer-events: none; z-index: 2; }
 .head::before { content: ''; position: absolute; left: -0.75px; top: 10px; bottom: 0; width: 1.5px; background: var(--head); }
-.head::after { content: ''; position: absolute; left: -7px; top: 0; width: 14px; height: 14px; background: var(--head); border-radius: 50% 50% 50% 0; corner-shape: round; transform: rotate(-45deg); box-shadow: var(--sh-pill); }
+.head__pin { position: sticky; top: calc(var(--tl-pt) + 2px); height: 0; }   /* the pin + grip stay on the pinned ruler; the line runs on below */
+.head__pin::before { content: ''; position: absolute; left: -3px; width: 6px; bottom: 0; height: calc(var(--tl-pt) + 8px); background: var(--bg); }   /* hides the line above the pin */
+.head__pin::after { content: ''; position: absolute; left: -7px; top: 0; width: 14px; height: 14px; background: var(--head); border-radius: 50% 50% 50% 0; corner-shape: round; transform: rotate(-45deg); box-shadow: var(--sh-pill); }
 .grip { position: absolute; left: -14px; top: -8px; width: 28px; height: 30px; pointer-events: auto; cursor: grab; border-radius: 50%; corner-shape: round; touch-action: none; }
 .head__line { position: absolute; left: -7px; width: 14px; top: 20px; bottom: 0; pointer-events: auto; cursor: ew-resize; }
 body.is-scrubbing, body.is-scrubbing * { cursor: grabbing !important; user-select: none; }
-.lane { position: absolute; top: var(--tl-pt); bottom: var(--tl-pb); left: calc(var(--lab) + 10px); right: var(--tl-pr); pointer-events: none; }
+.lane { position: absolute; z-index: 3; top: var(--tl-pt); bottom: var(--tl-pb); left: calc(var(--lab) + 10px); right: var(--tl-pr); pointer-events: none; }
 .foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin: 0; padding: 8px var(--tl-pr) 32px calc(var(--lab) + 10px); font-size: var(--t-caption); color: var(--muted); line-height: 1.6; }
 .foot code { font-family: var(--mono); font-size: var(--t-caption); }
 .legend { display: inline-flex; align-items: center; gap: 8px; }
@@ -350,7 +354,7 @@ body.is-scrubbing, body.is-scrubbing * { cursor: grabbing !important; user-selec
       <div class="tl__scale" id="scale"></div>
     </div>
     <div class="tl__rows" id="rows"></div>
-    <div class="lane" id="lane"><div class="head" id="head"><button class="grip" id="grip" aria-label="Playhead — drag to scrub, arrow keys step a frame"></button><i class="head__line" id="headLine" aria-hidden="true"></i></div></div>
+    <div class="lane" id="lane"><div class="head" id="head"><div class="head__pin"><button class="grip" id="grip" aria-label="Playhead — drag to scrub, arrow keys step a frame"></button></div><i class="head__line" id="headLine" aria-hidden="true"></i></div></div>
   </div>
   <p class="foot">
     <span class="legend"><i style="background:var(--delay)"></i>delay</span>
