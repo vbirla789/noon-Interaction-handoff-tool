@@ -3,6 +3,15 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>/* Fluid UI — one artboard. The layout is composed on a 1600 × 1040 board and the whole interface scales
+   with the window to fit it: cards, phone, spacing, type and timeline all keep the same proportions on a
+   13" laptop, a 17" screen or with the browser zoomed to 125–140% (zooming the browser shrinks the window
+   in CSS pixels, so the board scales back to the same composition). Phone-width windows (< 720px) keep the
+   stacked layout at 1×. --ui carries the factor for the few sizes worked out from 100vh. */
+(() => { const R = document.documentElement;
+  const fit = () => { const k = innerWidth < 720 ? 1 : Math.max(0.5, Math.min(1.6, innerWidth / 1600, innerHeight / 1040));
+    R.style.zoom = k === 1 ? '' : k; R.style.setProperty('--ui', k); };
+  fit(); addEventListener('resize', fit); })();</script>
 <title>Full Flow Spec</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -302,19 +311,18 @@ body.is-scrubbing, body.is-scrubbing * { cursor: grabbing !important; user-selec
   *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 80ms !important; }
 }
 
-@media (max-width: 1240px) { :root { --card-w: 300px; } }
 /* App shell, desktop: the page is exactly one screen tall and never scrolls. The top bar and the
    canvas hold still; only the timeline below scrolls, inside its own box (as ProtoPie's does).
    The canvas gives the timeline at least 240px whenever the window allows. */
-@media (min-width: 961px) {
+@media (min-width: 720px) {
   html, body { height: 100%; overflow: hidden; }
   body { display: flex; flex-direction: column; }
   .top { flex: none; }
-  .canvas { flex: none; height: clamp(440px, calc(100vh - 56px - 240px), 760px); }
+  .canvas { flex: none; height: clamp(440px, calc(100vh / var(--ui, 1) - 56px - 240px), 760px); }   /* 100vh ÷ zoom = the window's height in the page's own units */
   .tlwrap { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-width: none; }
   .tlwrap::-webkit-scrollbar { display: none; }
 }
-@media (max-width: 960px) {
+@media (max-width: 719px) {
   :root { --lab: 220px; --gut: 16px; --stage-pad: 16px; }
   .canvas { height: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
   .card, .stage, .ctrl, .side { position: static; transform: none; width: auto; }
